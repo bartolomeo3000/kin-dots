@@ -4,7 +4,7 @@ All functions only read the World; none of them changes the simulation.
 
 kinship_report(world)
     Drains the world's event log and, for each kind of interaction (met, share,
-    attack, random baseline pair), reports:
+    attack, alarm = caller -> warned agent, random baseline pair), reports:
       r_<kind>       genetic relatedness: 1 - mean d2(pair) / mean d2(random pair),
                      d2 = squared distance of behaviour genes, each scaled by its
                      population variance. 1 = clones, 0 = like random pairs.
@@ -35,7 +35,7 @@ from numba import njit
 
 from . import genome as G
 from . import kernels as K
-from .genealogy import EV_ATTACK, EV_MET, EV_RANDOM, EV_SHARE, EVENT_NAMES, mrca_pair
+from .genealogy import EV_ALARM, EV_ATTACK, EV_MET, EV_RANDOM, EV_SHARE, EVENT_NAMES, mrca_pair
 
 MAX_PAIRS_FOR_GENEALOGY = 3000  # sample size for the (slower) genealogical distances
 
@@ -50,7 +50,7 @@ def kinship_report(world, events: Dict[str, np.ndarray] = None) -> Dict[str, flo
     gen = world.genealogy
     r = np.random.default_rng([world.p.seed, world.step_count, 31])
 
-    for k in (EV_MET, EV_SHARE, EV_ATTACK, EV_RANDOM):
+    for k in (EV_MET, EV_SHARE, EV_ATTACK, EV_ALARM, EV_RANDOM):
         name = EVENT_NAMES[k]
         m = np.flatnonzero(kind == k)
         out[f"n_{name}"] = int(m.size)

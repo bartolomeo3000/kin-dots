@@ -25,13 +25,16 @@ from kin_dots.core import Params, World
 from kin_dots.core.kinship import PriceTracker, clans_and_cheaters, kinship_report
 
 RATE_KEYS = ("share_rate", "attack_rate", "sim_encounter", "sim_share", "sim_attack",
-             "sim_random", "assortment", "donor_energy", "recipient_energy")
+             "sim_random", "assortment", "donor_energy", "recipient_energy", "alarm_rate", "sim_warned")
 SHOW = ("population", "share_rate", "attack_rate", "mean_share_w0", "mean_share_w1",
         "mean_share_w2", "mean_share_w3", "assortment", "sim_encounter", "sim_share",
         "donor_energy", "recipient_energy", "mean_energy")
 KIN_SHOW = ("r_met", "r_share", "r_attack", "close_kin_share", "close_kin_met", "share_to_child",
             "hamilton_rb_minus_c", "sel_share_w0", "sel_share_w1", "sel_share_w2", "sel_share_w3",
             "sel_attack_w1", "n_clans", "frac_cheaters")
+PRED_SHOW = ("population", "alarm_rate", "mean_alarm_w0", "mean_alarm_w1", "mean_alarm_w2",
+             "mean_alarm_w3", "r_met", "r_alarm", "close_kin_alarm", "sel_alarm_w0", "sel_alarm_w1",
+             "predated_win", "share_rate")
 PRICE_WINDOW = 600  # steps over which the Price decomposition is measured, ending at each report
 
 
@@ -48,7 +51,7 @@ def run_one(job):
     every = max(1, steps // windows)
     if w.p.season_period > 0:  # report at the same season phase every time
         every = max(w.p.season_period, every // w.p.season_period * w.p.season_period)
-    rows, acc, deaths0 = [], {}, (0, 0, 0)
+    rows, acc, deaths0, pred0 = [], {}, (0, 0, 0), 0
     price = None
     for s in range(1, steps + 1):
         if s % every == (every - PRICE_WINDOW) % every and w.population > 0:
@@ -70,7 +73,8 @@ def run_one(job):
                 if price is not None:
                     row.update(price.finish(w))
                     price = None
-            deaths0, acc = d, {}
+            row["predated_win"] = c["total_predated"] - pred0
+            deaths0, acc, pred0 = d, {}, c["total_predated"]
             rows.append(row)
         if w.population == 0:
             break
@@ -92,7 +96,7 @@ def main(argv=None) -> int:
     ap.add_argument("--windows", type=int, default=5, help="number of reporting windows")
     ap.add_argument("--procs", type=int, default=max(1, (os.cpu_count() or 2) - 2))
     ap.add_argument("--out", type=Path, help="directory for per-run CSVs")
-    ap.add_argument("--table", choices=("behaviour", "kin", "both"), default="both",
+    ap.add_argument("--table", choices=("behaviour", "kin", "pred", "both"), default="both",
                     help="which summary table(s) to print")
     args = ap.parse_args(argv)
 
@@ -129,6 +133,8 @@ def main(argv=None) -> int:
             table(SHOW, ("  starv/old/kill", lambda r: f"  {r['starved_win']}/{r['old_win']}/{r['killed_win']}"))
         if args.table in ("kin", "both"):
             table(KIN_SHOW, ("", lambda r: ""))
+        if args.table == "pred":
+            table(PRED_SHOW, ("", lambda r: ""))
         if rows and rows[-1]["population"] == 0:
             print("   EXTINCT")
     return 0

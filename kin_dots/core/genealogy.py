@@ -22,7 +22,9 @@ EV_MET = 0      # an agent met a neighbour (whatever happened next)
 EV_SHARE = 1    # actor donated energy to target
 EV_ATTACK = 2   # actor attacked target
 EV_RANDOM = 3   # a random pair from the whole population (baseline, not an interaction)
-EVENT_NAMES = {EV_MET: "met", EV_SHARE: "share", EV_ATTACK: "attack", EV_RANDOM: "random"}
+EV_ALARM = 4    # actor's alarm call warned target
+EVENT_NAMES = {EV_MET: "met", EV_SHARE: "share", EV_ATTACK: "attack", EV_RANDOM: "random",
+               EV_ALARM: "alarm"}
 
 
 class Genealogy:

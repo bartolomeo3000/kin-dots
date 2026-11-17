@@ -6,7 +6,10 @@ Keys:
     SPACE        pause / resume
     RIGHT        one step (while paused)
     UP / DOWN    more / fewer simulation steps per frame
-    C            colour agents by: tag -> p(share) -> p(attack) -> harvest -> energy
+    C            colour agents by: tag -> p(share) -> p(attack) -> p(alarm) -> harvest -> energy
+
+Predators (if enabled) are red triangles; agents that called an alarm this step
+get a white ring.
     F            show / hide the food layer
     R            restart with the same seed
     N            restart with the next seed
@@ -37,7 +40,9 @@ BLUE = (120, 200, 255)
 YELLOW = (250, 210, 40)
 RED = (240, 90, 80)
 GREEN = (90, 190, 110)
-COLOR_MODES = ("tag", "p(share|kin)", "p(attack|stranger)", "harvest", "energy")
+CYAN = (90, 220, 230)
+PRED_COLOR = (255, 60, 60)
+COLOR_MODES = ("tag", "p(share|kin)", "p(attack|stranger)", "p(alarm|kin)", "harvest", "energy")
 HISTORY = 600       # samples kept for the side-panel plots
 SMOOTH = 0.03       # exponential smoothing of the noisy per-step rates
 KIN_EVERY = 100     # steps between genetic-relatedness measurements
@@ -80,9 +85,11 @@ class Viewer:
     def reset(self, seed: int) -> None:
         self.params = self.params.replace(seed=seed)
         self.world = World(self.params)
-        keys = ("population", "share_rate", "attack_rate", "sim_encounter", "sim_share", "sim_attack")
+        keys = ("population", "share_rate", "attack_rate", "alarm_rate",
+                "sim_encounter", "sim_share", "sim_attack")
         self.hist = {k: deque(maxlen=HISTORY) for k in keys}
-        self.kin_hist = {k: deque(maxlen=HISTORY // 4) for k in ("r_met", "r_share", "r_attack")}
+        self.kin_hist = {k: deque(maxlen=HISTORY // 4)
+                         for k in ("r_met", "r_share", "r_attack", "r_alarm")}
         self.smooth = {}
         self._record()
 
@@ -166,6 +173,9 @@ class Viewer:
             return (40 + 215 * g[:, G.TAG]).astype(np.uint8)
         if mode == "p(share|kin)":
             return _ramp(propensity(g, G.SHARE_W, 1.0))
+        if mode == "p(alarm|kin)":
+            # reference: kin around (sim 1), half-full energy, 3 neighbours
+            return _ramp(G.propensity(g, G.ALARM_W, 1.0, _REF_E, 0.3))
         if mode == "p(attack|stranger)":
             return _ramp(propensity(g, G.ATTACK_W, 0.5))
         if mode == "harvest":
@@ -185,6 +195,12 @@ class Viewer:
         circle = pygame.draw.circle
         for x, y, c in zip(px.tolist(), py.tolist(), cols.tolist()):
             circle(self.screen, c, (x, y), 2)
+        callers = idx[w.caller[idx] == 1]
+        for x, y in zip((w.x[callers] * scale).astype(int).tolist(), (w.y[callers] * scale).astype(int).tolist()):
+            circle(self.screen, (255, 255, 255), (x, y), 6, 1)
+        for x, y, hd in zip((w.px * scale).tolist(), (w.py * scale).tolist(), w.pheading.tolist()):
+            pts = [(x + 9 * np.cos(hd + a), y + 9 * np.sin(hd + a)) for a in (0.0, 2.5, -2.5)]
+            pygame.draw.polygon(self.screen, PRED_COLOR, pts)
 
     def _text(self, s: str, x: int, y: int, color=FG) -> None:
         self.screen.blit(self.font.render(s, True, color), (x, y))
@@ -223,9 +239,11 @@ class Viewer:
             f"population  {c['population']}",
             f"mean energy {c.get('mean_energy', 0):.2f}",
             f"births      {c['total_births']}",
-            f"died/killed {c['total_deaths']}/{c['total_killed']}",
+            f"died/killed/eaten {c['total_deaths']}/{c['total_killed']}/{c['total_predated']}",
             f"p(share|kin)       {p_share:.3f}",
             f"p(attack|stranger) {p_attack:.3f}" if w.p.attacks_enabled else "p(attack|stranger) off",
+            (f"p(alarm|kin)       {float(G.propensity(g, G.ALARM_W, 1.0, _REF_E, 0.3).mean()):.3f}"
+             if w.p.n_predators and a.any() else "predators off"),
             f"harvest     {c.get('mean_harvest', 0):.3f}",
             "",
             f"seed {w.p.seed}   speed {self.steps_per_frame}/frame   fps {self.clock.get_fps():.0f}",
@@ -240,14 +258,17 @@ class Viewer:
         h = self.hist
         self._plot(x0, y, pw, ph, [("population", h["population"], BLUE)])
         self._plot(x0, y + ph + 8, pw, ph,
-                   [("share", h["share_rate"], YELLOW), ("attack", h["attack_rate"], RED)])
+                   [("share", h["share_rate"], YELLOW), ("attack", h["attack_rate"], RED)]
+                   + ([("alarm/det", h["alarm_rate"], CYAN)] if w.p.n_predators else []))
+        atk = w.p.attacks_enabled
         self._plot(x0, y + 2 * (ph + 8), pw, ph,
-                   [("met", h["sim_encounter"], MUTED), ("helped", h["sim_share"], GREEN),
-                    ("attacked", h["sim_attack"], RED)])
+                   [("sim met", h["sim_encounter"], MUTED), ("help", h["sim_share"], GREEN)]
+                   + ([("atk", h["sim_attack"], RED)] if atk else []))
         k = self.kin_hist
         self._plot(x0, y + 3 * (ph + 8), pw, ph,
-                   [("r met", k["r_met"], MUTED), ("helped", k["r_share"], GREEN),
-                    ("attacked", k["r_attack"], RED)], n_max=HISTORY // 4)
+                   [("r met", k["r_met"], MUTED), ("help", k["r_share"], GREEN)]
+                   + ([("atk", k["r_attack"], RED)] if atk else [])
+                   + ([("warn", k["r_alarm"], CYAN)] if w.p.n_predators else []), n_max=HISTORY // 4)
 
         help_lines = ["SPACE pause  RIGHT step", "UP/DOWN speed  C colour", "F food  R restart  N new seed"]
         for i, s in enumerate(help_lines):

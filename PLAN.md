@@ -198,3 +198,31 @@ Wyniki (40k kroków, 2 ziarna na warunek, okna co 8000 kroków; `results/m3/`):
 **Do zrobienia później:**
 - Regresja Queller/Grafen: `b` i `c` w jednostkach fitnessu (liczba potomków w następnym oknie w zależności od energii oddanej i otrzymanej).
 - Liczba klanów mocno zależy od pory roku (od 0 do ~600). `sweep` wyrównuje teraz okna raportów do wielokrotności okresu pór roku. Powyższa tabela powstała jeszcze bez tego wyrównania, dlatego klanów w niej nie ma.
+
+### Drapieżniki i krzyk ostrzegawczy (2026-11-17)
+
+**Model** (`kin_dots/core/predation.py`, parametry `n_predators` itd.):
+- Drapieżniki nie ewoluują. Gonią najbliższą kropkę w zasięgu wzroku i po udanym polowaniu robią przerwę na trawienie.
+- Kropka zauważa drapieżnika z prawdopodobieństwem `detect_prob` i się chowa. Schowaną 5× trudniej złapać.
+- Nowe geny `alarm_w0..3` decydują o krzyku na podstawie: podobieństwa sąsiadów, własnej energii i liczby sąsiadów. Krzyk chowa wszystkich sąsiadów.
+- Koszt dla krzyczącego: nie może się schować, płaci energię, a drapieżnik, który go widzi, wybiera go pierwszego (ostatnie można wyłączyć: `predators_target_callers`).
+- Kontrola `alarm_to_random`: ostrzeżenie trafia do losowych kropek z mapy, a nie do sąsiadów.
+- Genom ma teraz 19 genów. Dla tego samego ziarna liczby różnią się więc od wcześniejszych przebiegów. Wnioski z dzielenia się i powściągliwości sprawdziłem ponownie i nadal się trzymają (`results/recheck`).
+
+**Wyniki** (40k kroków, 2 ziarna na warunek; `results/pred1..3`):
+
+| Warunek | Krzyk (na wykrycie): start → koniec | Uwagi |
+|---|---|---|
+| 200 drapieżników, bez pór roku, `detect_prob` 0.3 | 13% → 3.6% (2/2), kontrola tak samo | krzyk zanika |
+| jw., `detect_prob` 0.05 | 18% → 14% (2/2) | powoli zanika |
+| jw., drapieżnik nie wybiera krzyczących | 20% → 16–19% | ≈ neutralny, kontrola tak samo |
+| **60 drapieżników + pory roku** | **wzrost w 3/4 przebiegów (do 39%, 60%, 76%)**, w 1 spadek do 5% | w jednym `alarm_w1` → +3.5 (krzycz przy krewnych) |
+| jw., kontrola `alarm_to_random` | 1/2 wzrost (40%), 1/2 bez zmian (19%) | |
+
+**Wnioski (wstępne):**
+- **Bez pór roku krzyk nie ewoluuje.** Populacja stoi na granicy pojemności środowiska, `r` sąsiadów spada do ~0.59 (wobec ~0.85 przy porach roku), a uratowany sąsiad to też konkurent o jedzenie (pułapka Taylora). Wygląda to na ten sam mechanizm, który blokował dzielenie się.
+- **Z porami roku krzyk często rośnie, ale wynik jest niejednoznaczny.** Kontrola też raz wzrosła, a w chudej porze populacja spada do ~100–450 kropek, więc dryf losowy jest silny.
+- **Do rozstrzygnięcia:** więcej ziaren (≥ 5 na warunek) i większy świat (populacja w chudej porze ≥ 1000).
+- **Ekologia przy wolnym ruchu:** kropki żyją w wyspowych koloniach, które wyjadają do zera, a resztę mapy pokrywa jedzenie, do którego nie docierają. Warto rozważyć szybszy ruch w porze żyznej albo większe rozproszenie potomstwa.
+
+Presety: `configs/kin_alarm.yaml`, `configs/kin_alarm_random_warn.yaml`.

@@ -6,7 +6,8 @@ Arrays have fixed capacity ``params.max_agents``; ``alive`` marks used slots
 and dead slots are reused by newborns.
 
 Step order: find neighbours -> interact (attack / share) -> move -> eat
--> metabolism -> die -> reproduce -> age -> food regrows.
+-> predators (detect, alarm calls, hunt) -> metabolism -> die -> reproduce -> age
+-> food regrows.
 Neighbour lists are built once per step (before anyone moves) and used by both
 the interaction and the movement phase.
 
@@ -15,6 +16,7 @@ can be checked exactly:
     d(total agent energy) = eaten - metabolic - movement - birth_cost - death_removed
                             - share_given + share_received
                             - attack_cost - killed_energy + predation_gain
+                            - alarm_cost - predated_energy
     d(total food)         = food_growth - eaten
 """
 from __future__ import annotations
@@ -25,7 +27,8 @@ import numpy as np
 
 from . import genome as G
 from . import kernels as K
-from .genealogy import EV_RANDOM, EventLog, Genealogy
+from . import predation as PR
+from .genealogy import EV_ALARM, EV_RANDOM, EventLog, Genealogy
 from .params import Params
 
 RANDOM_PAIRS_PER_STEP = 64  # baseline pairs logged each step for relatedness metrics
@@ -37,6 +40,12 @@ _LEDGER_KEYS = {
     "attacker_lost": K.L_ATTACKER_LOST, "encounters": K.L_ENCOUNTERS,
     "sim_encounter": K.L_SIM_ENCOUNTER, "sim_share": K.L_SIM_SHARE, "sim_attack": K.L_SIM_ATTACK,
     "donor_energy": K.L_DONOR_E, "recipient_energy": K.L_RECIPIENT_E,
+}
+_PRED_KEYS = {
+    "detections": PR.P_DETECTIONS, "alarms": PR.P_ALARMS, "warned": PR.P_WARNED,
+    "sim_warned": PR.P_SIM_WARNED, "alarm_cost": PR.P_ALARM_COST, "strikes": PR.P_STRIKES,
+    "predated": PR.P_KILLS, "predated_energy": PR.P_KILLED_ENERGY,
+    "callers_predated": PR.P_CALLERS_KILLED, "hidden_predated": PR.P_HIDDEN_KILLED,
 }
 
 # The 8 neighbouring food cells and the unit vector pointing to each.
@@ -70,7 +79,10 @@ class World:
         self.total_deaths = 0   # starvation + old age
         self.total_starved = 0  # starvation only
         self.total_killed = 0   # deaths in fights
+        self.total_predated = 0  # deaths by predators
         self.last: Dict[str, float] = {}
+        self.alert = np.zeros(cap, dtype=np.int64)   # steps left hiding (detected / warned)
+        self.caller = np.zeros(cap, dtype=np.int8)   # called an alarm this step
 
         self.nb = max(3, int(p.world_size // p.interaction_radius))  # hash buckets per side
         self._buf = np.empty(cap, dtype=np.int64)  # scratch space for neighbour lists
@@ -95,6 +107,13 @@ class World:
         self.id[slots] = np.arange(k)
         self.next_id = k
         self.genealogy.add(self.id[slots], np.full(k, -1, dtype=np.int64), 0)
+
+        # Predators (drawn only when enabled, so runs without them are unchanged).
+        npred = p.n_predators
+        self.px = self.rng.random(npred) * p.world_size if npred else np.zeros(0)
+        self.py = self.rng.random(npred) * p.world_size if npred else np.zeros(0)
+        self.pheading = self.rng.random(npred) * 2 * np.pi if npred else np.zeros(0)
+        self.pcool = np.zeros(npred, dtype=np.int64)
 
     # ------------------------------------------------------------------ queries
 
@@ -122,6 +141,7 @@ class World:
         last = dict(eaten=0.0, metabolic=0.0, movement=0.0, birth_cost=0.0,
                     death_removed=0.0, food_growth=0.0, births=0, deaths=0, births_blocked=0)
         last.update({k: 0.0 for k in _LEDGER_KEYS})
+        last.update({k: 0.0 for k in _PRED_KEYS})
 
         if idx.size:
             p = self.p
@@ -134,6 +154,9 @@ class World:
             idx, kin, strangers = idx[live], kin[live], strangers[live]
             last["movement"] = self._move(idx, kin, strangers)
             last["eaten"] = self._eat(idx)
+            if p.n_predators > 0:
+                last.update(self._predation(idx))
+                idx = idx[self.alive[idx]]
             last["metabolic"] = self.p.metabolism * idx.size
             self.energy[idx] -= self.p.metabolism
             last["deaths"], last["death_removed"] = self._die(idx)
@@ -144,6 +167,7 @@ class World:
         self.total_births += last["births"]
         self.total_deaths += last["deaths"]
         self.total_killed += int(last["killed"])
+        self.total_predated += int(last["predated"])
         self.last = last
         self.step_count += 1
 
@@ -215,17 +239,44 @@ class World:
         self._record_events(idx)
         return {k: float(ledger[i]) for k, i in _LEDGER_KEYS.items()}
 
-    def _record_events(self, idx: np.ndarray) -> None:
-        """Copy this step's encounters into the event log, plus random baseline pairs."""
+    def _predation(self, idx: np.ndarray) -> Dict[str, float]:
+        p = self.p
+        np.maximum(self.alert - 1, 0, out=self.alert)
+        self.caller[:] = 0
+        start, order = K.build_hash(self.x, self.y, idx, p.world_size, self.nb)
+        ledger = np.zeros(PR.N_PLEDGER)
+        self._log_n[0] = 0
+        seed = int(self.rng.integers(2 ** 31))
+        PR.predation(seed, idx, self.x, self.y, self.alive, self.energy, self.genome,
+                     G.ALARM_W.start, G.TAG.start, self.alert, self.caller,
+                     self.px, self.py, self.pcool, self.pheading, start, order,
+                     p.world_size, self.nb, p.interaction_radius, p.birth_threshold,
+                     p.alarm_to_random, p.predator_speed, p.predator_sight,
+                     p.predator_catch_radius, p.predator_handling, p.catch_prob,
+                     p.hidden_catch_factor, p.detect_radius, p.detect_prob, p.alert_duration,
+                     p.alarm_cost, p.predators_target_callers, self._buf, ledger,
+                     self._log_i, self._log_j, self._log_n)
         n = int(self._log_n[0])
-        i, j, kind = self._log_i[:n], self._log_j[:n], self._log_kind[:n]
-        r = self.metric_rng
-        ri = idx[r.integers(idx.size, size=RANDOM_PAIRS_PER_STEP)]
-        rj = idx[r.integers(idx.size, size=RANDOM_PAIRS_PER_STEP)]
-        keep = ri != rj
-        i = np.concatenate([i, ri[keep]])
-        j = np.concatenate([j, rj[keep]])
-        kind = np.concatenate([kind, np.full(keep.sum(), EV_RANDOM, dtype=np.int8)])
+        self._record_events(idx, self._log_i[:n], self._log_j[:n],
+                            np.full(n, EV_ALARM, dtype=np.int8), add_random=False)
+        return {k: float(ledger[i]) for k, i in _PRED_KEYS.items()}
+
+    def _record_events(self, idx: np.ndarray, i=None, j=None, kind=None, add_random=True) -> None:
+        """Copy events (default: this step's encounters) into the event log, plus
+        random baseline pairs."""
+        if i is None:
+            n = int(self._log_n[0])
+            i, j, kind = self._log_i[:n], self._log_j[:n], self._log_kind[:n]
+        if add_random:
+            r = self.metric_rng
+            ri = idx[r.integers(idx.size, size=RANDOM_PAIRS_PER_STEP)]
+            rj = idx[r.integers(idx.size, size=RANDOM_PAIRS_PER_STEP)]
+            keep = ri != rj
+            i = np.concatenate([i, ri[keep]])
+            j = np.concatenate([j, rj[keep]])
+            kind = np.concatenate([kind, np.full(keep.sum(), EV_RANDOM, dtype=np.int8)])
+        if i.size == 0:
+            return
 
         beh = self.genome[idx][:, G.BEHAVIOUR_GENES]
         var = np.maximum(beh.var(axis=0), 1e-9)
@@ -293,6 +344,7 @@ class World:
         self.age[kids] = -1  # becomes 0 after this step's ageing
         self.id[kids] = np.arange(self.next_id, self.next_id + k)
         self.parent_id[kids] = self.id[parents]
+        self.alert[kids] = 0
         self.genealogy.add(self.id[kids], self.id[parents], self.step_count)
         self.next_id += k
         return k, blocked, p.birth_cost * k
@@ -340,6 +392,7 @@ class World:
             "total_deaths": self.total_deaths,
             "total_killed": self.total_killed,
             "total_starved": self.total_starved,
+            "total_predated": self.total_predated,
             "season": self.season_factor(),
         }
         # Behaviour actually shown in the last step (per encounter), and who it was aimed at.
@@ -353,6 +406,10 @@ class World:
         out["sim_attack"] = L["sim_attack"] / L["attacks"] if L.get("attacks") else nan
         out["donor_energy"] = L["donor_energy"] / L["shares"] if L.get("shares") else nan
         out["recipient_energy"] = L["recipient_energy"] / L["shares"] if L.get("shares") else nan
+        det = L.get("detections", 0.0)
+        out["alarm_rate"] = L["alarms"] / det if det else nan  # calls per detection
+        out["sim_warned"] = L["sim_warned"] / L["warned"] if L.get("warned") else nan
+        out["predated"] = L.get("predated", 0.0)
         out["sim_random"] = self.random_pair_similarity()
         out["assortment"] = out["sim_encounter"] - out["sim_random"]
         if a.any():

@@ -1,0 +1,11 @@
+# Drapieżniki + pory roku: czy wyewoluuje krzyk ostrzegawczy? (PLAN.md, sekcja 8)
+# Wynik na razie niejednoznaczny: krzyk rośnie w 3/4 przebiegów, ale w kontroli też raz.
+world_size: 300.0
+grid_cells: 75
+move_speed: 0.1
+tag_mutation_sd: 0.08
+season_period: 600
+season_amplitude: 0.9
+attacks_enabled: false
+n_predators: 60          # czerwone trójkąty w podglądzie
+detect_prob: 0.05        # kropka rzadko sama zauważa drapieżnika, więc ostrzeżenie jest cenne

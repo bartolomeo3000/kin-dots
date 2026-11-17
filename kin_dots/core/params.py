@@ -56,6 +56,23 @@ class Params:
                                         # map instead of the neighbour met (same ecology, no kinship)
     weight_clip: float = 10.0           # decision/movement weights are kept in [-clip, clip]
 
+    # --- predators (non-evolving hunters) and alarm calls ---
+    n_predators: int = 0                # 0 disables predators
+    predator_speed: float = 0.5         # distance per step
+    predator_sight: float = 10.0        # predators chase prey within this distance
+    predator_catch_radius: float = 1.0  # a strike is possible within this distance
+    predator_handling: int = 20         # steps a predator rests after a kill
+    catch_prob: float = 0.5             # chance a strike kills an unprotected prey
+    hidden_catch_factor: float = 0.2    # catch_prob is multiplied by this for alerted (hiding) prey
+    detect_radius: float = 6.0          # prey may notice predators within this distance...
+    detect_prob: float = 0.3            # ...with this probability per step
+    alert_duration: int = 5             # steps a detecting or warned agent stays hidden
+    alarm_cost: float = 0.2             # energy paid for calling. A caller also cannot hide
+                                        # and is chased first by predators that see it.
+    predators_target_callers: bool = True  # predators that see a caller chase it first
+    alarm_to_random: bool = False       # control: the warning reaches random agents on the map
+                                        # instead of the caller's neighbours
+
     # --- reproduction (asexual) ---
     birth_threshold: float = 20.0  # energy needed to reproduce
     birth_cost: float = 1.0        # energy lost (not passed on) per birth

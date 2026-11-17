@@ -14,30 +14,36 @@ HARVEST = 8
 MOVE_FOOD = 9
 MOVE_KIN = 10
 MOVE_STRANGER = 11
+# Alarm call when a predator is detected:
+# p = sigmoid(w0 + w1*mean tag similarity of neighbours + w2*my_energy + w3*n_neighbours/10)
+ALARM_W = slice(12, 16)
 # Heritable colour tag (RGB in [0, 1]), mutated independently of behaviour
-TAG = slice(12, 15)
+TAG = slice(16, 19)
 
-N_GENES = 15
+N_GENES = 19
 
 GENE_NAMES = (
     [f"share_w{i}" for i in range(4)]
     + [f"attack_w{i}" for i in range(4)]
-    + ["harvest", "move_food", "move_kin", "move_stranger", "tag_r", "tag_g", "tag_b"]
+    + ["harvest", "move_food", "move_kin", "move_stranger"]
+    + [f"alarm_w{i}" for i in range(4)]
+    + ["tag_r", "tag_g", "tag_b"]
 )
 assert len(GENE_NAMES) == N_GENES
 
 
 # Everything except the tag: the genes that shape behaviour (used for genetic relatedness).
-BEHAVIOUR_GENES = np.arange(0, 12)
+BEHAVIOUR_GENES = np.arange(0, TAG.start)
 
 # Genes that are decision/movement weights (clipped to [-weight_clip, weight_clip]).
-WEIGHT_GENES = np.r_[0:8, MOVE_FOOD, MOVE_KIN, MOVE_STRANGER]
+WEIGHT_GENES = np.r_[0:8, MOVE_FOOD, MOVE_KIN, MOVE_STRANGER, 12:16]
 
 
 def propensity(g: np.ndarray, which: slice, sim: float = 1.0,
                e_self: float = 0.5, e_other: float = 0.5) -> np.ndarray:
     """Probability of sharing (which=SHARE_W) or attacking (ATTACK_W) in a reference
-    situation: given tag similarity and both energies (as fractions of birth_threshold)."""
+    situation: given tag similarity and both energies (as fractions of birth_threshold).
+    For ALARM_W the last input is the neighbour count / 10 instead of the other's energy."""
     w = g[:, which]
     z = w[:, 0] + w[:, 1] * sim + w[:, 2] * e_self + w[:, 3] * e_other
     return 1.0 / (1.0 + np.exp(-z))
@@ -53,6 +59,7 @@ def founder_genomes(n: int, rng: np.random.Generator, weight_sd: float = 0.0) ->
     g = np.zeros((n, N_GENES))
     g[:, SHARE_W] = [-2.0, 0.0, 0.0, 0.0]   # p(share) ~ 12% per encounter
     g[:, ATTACK_W] = [-3.0, 0.0, 0.0, 0.0]  # p(attack) ~ 5% per encounter
+    g[:, ALARM_W] = [-2.0, 0.0, 0.0, 0.0]   # p(alarm | predator detected) ~ 12%
     g[:, HARVEST] = 0.5
     g[:, MOVE_FOOD] = 1.0
     if weight_sd > 0:

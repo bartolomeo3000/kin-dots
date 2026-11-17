@@ -1,0 +1,11 @@
+# KONTROLA: jak kin_alarm, ale ostrzeżenie trafia do losowych kropek z mapy, nie do sąsiadów.
+world_size: 300.0
+grid_cells: 75
+move_speed: 0.1
+tag_mutation_sd: 0.08
+season_period: 600
+season_amplitude: 0.9
+attacks_enabled: false
+n_predators: 60          # czerwone trójkąty w podglądzie
+detect_prob: 0.05        # kropka rzadko sama zauważa drapieżnika, więc ostrzeżenie jest cenne
+alarm_to_random: true
