@@ -36,7 +36,20 @@ class Params:
     move_speed: float = 1.0        # distance moved per step
     move_cost: float = 0.05        # energy per unit distance moved
     move_noise: float = 1.0        # std of the random component of the movement direction
-    max_age: int = 0               # 0 disables death by old age
+    max_age: int = 300             # death by old age (keeps generations short); 0 disables
+
+    # --- interactions (M2) ---
+    interaction_radius: float = 4.0     # neighbours within this distance can be met / sensed
+    share_cost: float = 1.0             # energy a donor pays
+    share_benefit: float = 0.9          # energy the recipient gets. Keep <= share_cost: with
+                                        # benefit > cost two agents sharing back and forth create
+                                        # energy from nothing and the population explodes. The
+                                        # Hamilton "b" then comes from *who* is helped (a starving
+                                        # relative survives), not from the transfer itself.
+    attack_cost: float = 0.2            # paid by an attacker whatever the outcome
+    predation_efficiency: float = 0.5   # share of the loser's energy the winner gets
+    tag_blind_share: bool = False       # E3 control: sharing decision cannot see tag similarity
+    weight_clip: float = 10.0           # decision/movement weights are kept in [-clip, clip]
 
     # --- reproduction (asexual) ---
     birth_threshold: float = 20.0  # energy needed to reproduce
@@ -45,7 +58,9 @@ class Params:
     dispersal_sd: float = 2.0      # std of child offset from parent; < 0 means "anywhere on the map"
 
     # --- mutation ---
-    mutation_sd: float = 0.05      # gaussian mutation of behavioural genes
+    mutation_sd: float = 0.05      # gaussian mutation of non-weight genes (harvest)
+    weight_mutation_sd: float = 0.15  # gaussian mutation of decision/movement weights
+    founder_weight_sd: float = 0.5    # standing variation of weights in the founding population
     tag_mutation_sd: float = 0.02  # gaussian mutation of the colour tag (kept separate on purpose)
 
     # --- genes clipped to a valid range ---

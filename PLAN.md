@@ -107,3 +107,21 @@ Uwaga: pierwsze uruchomienie trwa kilka sekund dłużej, bo Numba kompiluje funk
 - **Ukryta nagroda w regułach.** Na przykład darowizna zwiększa szansę narodzin u dawcy. Każda reguła przechodzi przegląd pod kątem „czy osobnik zyskuje bezpośrednio?”.
 - **Opieka rodzicielska udaje altruizm.** Mierzymy ją osobno (sekcja 3).
 - **Wydajność drzewa genealogicznego.** Przycinamy wymarłe gałęzie i liczymy pokrewieństwo na próbce.
+
+## 8. Notatki z implementacji i pierwsze wyniki
+
+### M2 (2026-11-17)
+
+- **Dzielenie się nie może tworzyć energii.** Przy `b > c` dwie sąsiednie kropki oddające sobie energię nawzajem tworzą ją z niczego. Populacja dochodzi wtedy do limitu tablic w ~250 krokach, a średnia energia rośnie do ~300. Dlatego `share_benefit ≤ share_cost` (domyślnie 0.9 vs 1.0). „b” z reguły Hamiltona musi powstać z tego, *komu* się pomaga (np. ratunek głodującego krewnego), a nie z samego transferu.
+- **Wynik bazowy (E0 vs E1, 30k kroków, 2 ziarna): altruizm nie ewoluuje.**
+  - Dzielenie się spada z ~3% do ~0.1% spotkań w obu warunkach. Atak też zanika.
+  - Kropki ewoluują *unikanie* podobnych do siebie (`move_kin` ≈ −2), co wygląda na ucieczkę przed konkurencją z krewnymi.
+  - `harvest` dochodzi do maksimum, czyli zachłanność.
+- **Przyczyny (hipotezy do sprawdzenia):**
+  1. *Energia jest liniowo przeliczana na potomstwo.* Oddanie 1 jednostki krewnemu, który dostaje 0.9, to strata dla całej rodziny. Pomoc opłaca się dopiero przy nieliniowości: ratowanie przed śmiercią głodową lub dopchnięcie do progu rozmnażania. Obecnie mało kto umiera z głodu (dominują walki i starość).
+  2. *Znacznik nie niesie informacji o pokrewieństwie.* Przy `tag_mutation_sd = 0.02` cała populacja ma podobne kolory również przy globalnym rozproszeniu (średnie podobieństwo spotkanych ~0.8 w E0 *i* w E1). Rozpoznawanie „po kolorze” nic więc nie daje.
+  3. *Konkurencja z krewnymi* (pułapka Taylora) przy lokalnych narodzinach i pełnym zagęszczeniu.
+- **Następne kroki:**
+  - M3: mierzyć prawdziwe pokrewieństwo z drzewa genealogicznego, a nie z koloru.
+  - Wprowadzić nieliniowość wartości energii (np. większa śmiertelność głodowa, zmienne w czasie łaty jedzenia).
+  - Zwiększyć tempo mutacji znacznika.

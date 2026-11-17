@@ -5,11 +5,16 @@ each phase of a step is a few NumPy operations over the whole population.
 Arrays have fixed capacity ``params.max_agents``; ``alive`` marks used slots
 and dead slots are reused by newborns.
 
-Step order: move -> eat -> pay costs -> die -> reproduce -> age -> food regrows.
+Step order: find neighbours -> interact (attack / share) -> move -> eat
+-> metabolism -> die -> reproduce -> age -> food regrows.
+Neighbour lists are built once per step (before anyone moves) and used by both
+the interaction and the movement phase.
 
 Every step records an energy ledger in ``self.last`` so the energy budget
 can be checked exactly:
     d(total agent energy) = eaten - metabolic - movement - birth_cost - death_removed
+                            - share_given + share_received
+                            - attack_cost - killed_energy + predation_gain
     d(total food)         = food_growth - eaten
 """
 from __future__ import annotations
@@ -19,7 +24,16 @@ from typing import Dict
 import numpy as np
 
 from . import genome as G
+from . import kernels as K
 from .params import Params
+
+_LEDGER_KEYS = {
+    "shares": K.L_SHARES, "share_given": K.L_SHARE_GIVEN, "share_received": K.L_SHARE_RECEIVED,
+    "attacks": K.L_ATTACKS, "attack_cost": K.L_ATTACK_COST, "killed": K.L_KILLED,
+    "killed_energy": K.L_KILLED_ENERGY, "predation_gain": K.L_PREDATION_GAIN,
+    "attacker_lost": K.L_ATTACKER_LOST, "encounters": K.L_ENCOUNTERS,
+    "sim_encounter": K.L_SIM_ENCOUNTER, "sim_share": K.L_SIM_SHARE, "sim_attack": K.L_SIM_ATTACK,
+}
 
 # The 8 neighbouring food cells and the unit vector pointing to each.
 _OFFSETS = np.array([(dx, dy) for dx in (-1, 0, 1) for dy in (-1, 0, 1) if (dx, dy) != (0, 0)])
@@ -49,8 +63,12 @@ class World:
         self.step_count = 0
         self.next_id = 0
         self.total_births = 0
-        self.total_deaths = 0
+        self.total_deaths = 0   # starvation + old age
+        self.total_killed = 0   # deaths in fights
         self.last: Dict[str, float] = {}
+
+        self.nb = max(3, int(p.world_size // p.interaction_radius))  # hash buckets per side
+        self._buf = np.empty(cap, dtype=np.int64)  # scratch space for neighbour lists
 
         k = p.init_agents
         slots = np.arange(k)
@@ -58,7 +76,7 @@ class World:
         self.x[slots] = self.rng.random(k) * p.world_size
         self.y[slots] = self.rng.random(k) * p.world_size
         self.energy[slots] = p.init_energy
-        self.genome[slots] = G.founder_genomes(k, self.rng)
+        self.genome[slots] = G.founder_genomes(k, self.rng, p.founder_weight_sd)
         self.id[slots] = np.arange(k)
         self.next_id = k
 
@@ -87,9 +105,18 @@ class World:
         idx = np.flatnonzero(self.alive)
         last = dict(eaten=0.0, metabolic=0.0, movement=0.0, birth_cost=0.0,
                     death_removed=0.0, food_growth=0.0, births=0, deaths=0, births_blocked=0)
+        last.update({k: 0.0 for k in _LEDGER_KEYS})
 
         if idx.size:
-            last["movement"] = self._move(idx)
+            p = self.p
+            nbr_start, nbr = K.neighbour_lists(idx, self.x, self.y, self.alive, p.world_size,
+                                               self.nb, p.interaction_radius, self._buf)
+            last.update(self._interact(idx, nbr_start, nbr))
+            kin, strangers = K.social_vectors(idx, self.x, self.y, self.alive, self.genome,
+                                              G.TAG.start, nbr_start, nbr, p.world_size)
+            live = self.alive[idx]  # fights may have killed some
+            idx, kin, strangers = idx[live], kin[live], strangers[live]
+            last["movement"] = self._move(idx, kin, strangers)
             last["eaten"] = self._eat(idx)
             last["metabolic"] = self.p.metabolism * idx.size
             self.energy[idx] -= self.p.metabolism
@@ -100,10 +127,12 @@ class World:
         last["food_growth"] = self._regrow()
         self.total_births += last["births"]
         self.total_deaths += last["deaths"]
+        self.total_killed += int(last["killed"])
         self.last = last
         self.step_count += 1
 
-    def _move(self, idx: np.ndarray) -> float:
+    def _move(self, idx: np.ndarray, kin: np.ndarray, strangers: np.ndarray) -> float:
+        """kin / strangers: per-agent social vectors (see kernels.social_vectors)."""
         p, n = self.p, self.p.grid_cells
         cx, cy = self.cell_of(idx)
         own = self.food[cx, cy]
@@ -114,8 +143,12 @@ class World:
             diff = self.food[(cx + dx) % n, (cy + dy) % n] - own
             grad += diff[:, None] * u
 
-        w_food = self.genome[idx, G.MOVE_FOOD]
-        d = w_food[:, None] * grad + self.rng.normal(scale=p.move_noise, size=(idx.size, 2))
+        # Social pull: towards similar-tagged neighbours, away from dissimilar ones.
+        g = self.genome[idx]
+        d = (g[:, G.MOVE_FOOD, None] * grad
+             + g[:, G.MOVE_KIN, None] * kin
+             - g[:, G.MOVE_STRANGER, None] * strangers
+             + self.rng.normal(scale=p.move_noise, size=(idx.size, 2)))
         norm = np.linalg.norm(d, axis=1, keepdims=True)
         d = np.divide(d, norm, out=np.zeros_like(d), where=norm > 0)
 
@@ -148,6 +181,20 @@ class World:
         food -= eaten_cell
         self.energy[idx] += share
         return float(eaten_cell.sum())
+
+    def _interact(self, idx: np.ndarray, nbr_start=None, nbr=None) -> Dict[str, float]:
+        p = self.p
+        if nbr_start is None:
+            nbr_start, nbr = K.neighbour_lists(idx, self.x, self.y, self.alive, p.world_size,
+                                               self.nb, p.interaction_radius, self._buf)
+        acting_k = self.rng.permutation(idx.size)
+        u = self.rng.random((idx.size, 4))
+        ledger = np.zeros(K.N_LEDGER)
+        K.interact(acting_k, idx, self.energy, self.alive, self.genome,
+                   G.SHARE_W.start, G.ATTACK_W.start, G.TAG.start, p.tag_blind_share,
+                   nbr_start, nbr, p.birth_threshold, p.share_cost, p.share_benefit,
+                   p.attack_cost, p.predation_efficiency, u, self._buf, ledger)
+        return {k: float(ledger[i]) for k, i in _LEDGER_KEYS.items()}
 
     def _die(self, idx: np.ndarray):
         dead = self.energy[idx] <= 0
@@ -189,8 +236,12 @@ class World:
         # Genome: copy with gaussian mutation; the tag mutates at its own rate.
         g = self.genome[parents].copy()
         g += self.rng.normal(scale=p.mutation_sd, size=g.shape)
+        g[:, G.WEIGHT_GENES] += self.rng.normal(
+            scale=np.sqrt(max(p.weight_mutation_sd ** 2 - p.mutation_sd ** 2, 0.0)),
+            size=(k, G.WEIGHT_GENES.size))  # weights get weight_mutation_sd in total
         # Keep the gene itself in range so no hidden drift builds up past the limit.
         g[:, G.HARVEST] = np.clip(g[:, G.HARVEST], p.harvest_min, p.harvest_max)
+        g[:, G.WEIGHT_GENES] = np.clip(g[:, G.WEIGHT_GENES], -p.weight_clip, p.weight_clip)
         g[:, G.TAG] = np.clip(
             self.genome[parents][:, G.TAG] + self.rng.normal(scale=p.tag_mutation_sd, size=(k, 3)), 0.0, 1.0
         )
@@ -221,10 +272,21 @@ class World:
             "total_food": self.total_food(),
             "total_births": self.total_births,
             "total_deaths": self.total_deaths,
+            "total_killed": self.total_killed,
         }
+        # Behaviour actually shown in the last step (per encounter), and who it was aimed at.
+        L = self.last
+        enc = L.get("encounters", 0.0)
+        nan = float("nan")
+        out["share_rate"] = L.get("shares", 0.0) / enc if enc else nan
+        out["attack_rate"] = L.get("attacks", 0.0) / enc if enc else nan
+        out["sim_encounter"] = L.get("sim_encounter", 0.0) / enc if enc else nan
+        out["sim_share"] = L["sim_share"] / L["shares"] if L.get("shares") else nan
+        out["sim_attack"] = L["sim_attack"] / L["attacks"] if L.get("attacks") else nan
         if a.any():
+            g = self.genome[a]
             out["mean_energy"] = float(self.energy[a].mean())
             out["mean_age"] = float(self.age[a].mean())
-            out["mean_harvest"] = float(self.genome[a, G.HARVEST].mean())
-            out["mean_move_food"] = float(self.genome[a, G.MOVE_FOOD].mean())
+            for i, name in enumerate(G.GENE_NAMES[: G.TAG.start]):
+                out[f"mean_{name}"] = float(g[:, i].mean())
         return out

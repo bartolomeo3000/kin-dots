@@ -6,7 +6,7 @@ Keys:
     SPACE        pause / resume
     RIGHT        one step (while paused)
     UP / DOWN    more / fewer simulation steps per frame
-    C            colour agents by: tag -> harvest gene -> energy
+    C            colour agents by: tag -> p(share) -> p(attack) -> harvest -> energy
     F            show / hide the food layer
     R            restart with the same seed
     N            restart with the next seed
@@ -28,12 +28,25 @@ from kin_dots.core import Params, World  # noqa: E402
 from kin_dots.core import genome as G  # noqa: E402
 
 VIEW = 800          # world view is VIEW x VIEW pixels
-PANEL = 320         # side panel width
+PANEL = 340         # side panel width
 BG = (18, 18, 22)
 FG = (225, 225, 230)
 MUTED = (140, 140, 150)
-COLOR_MODES = ("tag", "harvest", "energy")
+BLUE = (120, 200, 255)
+YELLOW = (250, 210, 40)
+RED = (240, 90, 80)
+GREEN = (90, 190, 110)
+COLOR_MODES = ("tag", "p(share|kin)", "p(attack|stranger)", "harvest", "energy")
 HISTORY = 600       # samples kept for the side-panel plots
+SMOOTH = 0.03       # exponential smoothing of the noisy per-step rates
+
+# Reference situation used to show an agent's propensities as one number:
+# both agents at half the birth threshold; "kin" = identical tag, "stranger" = similarity 0.5.
+_REF_E = 0.5
+
+
+def _sigmoid(z):
+    return 1.0 / (1.0 + np.exp(-z))
 
 
 def _ramp(t: np.ndarray) -> np.ndarray:
@@ -42,6 +55,11 @@ def _ramp(t: np.ndarray) -> np.ndarray:
     lo = np.array([40, 90, 220])
     hi = np.array([250, 210, 40])
     return (lo + (hi - lo) * t).astype(np.uint8)
+
+
+def propensity(genome: np.ndarray, which: slice, sim: float) -> np.ndarray:
+    w = genome[:, which]
+    return _sigmoid(w[:, 0] + w[:, 1] * sim + (w[:, 2] + w[:, 3]) * _REF_E)
 
 
 class Viewer:
@@ -61,13 +79,23 @@ class Viewer:
     def reset(self, seed: int) -> None:
         self.params = self.params.replace(seed=seed)
         self.world = World(self.params)
-        self.hist = {k: deque(maxlen=HISTORY) for k in ("population", "mean_harvest", "total_food")}
+        keys = ("population", "share_rate", "attack_rate", "sim_encounter", "sim_share")
+        self.hist = {k: deque(maxlen=HISTORY) for k in keys}
+        self.smooth = {}
         self._record()
 
     def _record(self) -> None:
         c = self.world.census()
         for k in self.hist:
-            self.hist[k].append(c.get(k, 0.0))
+            v = c.get(k, float("nan"))
+            if k == "population":
+                self.hist[k].append(v)
+                continue
+            if v == v:  # not NaN
+                prev = self.smooth.get(k)
+                self.smooth[k] = v if prev is None else prev + SMOOTH * (v - prev)
+            if k in self.smooth:
+                self.hist[k].append(self.smooth[k])
 
     # ---------------------------------------------------------------- input
 
@@ -126,11 +154,16 @@ class Viewer:
 
     def _agent_colors(self, idx: np.ndarray) -> np.ndarray:
         w, mode = self.world, COLOR_MODES[self.color_mode]
+        g = w.genome[idx]
         if mode == "tag":
-            return (40 + 215 * w.genome[idx, G.TAG]).astype(np.uint8)
+            return (40 + 215 * g[:, G.TAG]).astype(np.uint8)
+        if mode == "p(share|kin)":
+            return _ramp(propensity(g, G.SHARE_W, 1.0))
+        if mode == "p(attack|stranger)":
+            return _ramp(propensity(g, G.ATTACK_W, 0.5))
         if mode == "harvest":
             p = w.p
-            return _ramp((w.genome[idx, G.HARVEST] - p.harvest_min) / (p.harvest_max - p.harvest_min))
+            return _ramp((g[:, G.HARVEST] - p.harvest_min) / (p.harvest_max - p.harvest_min))
         return _ramp(w.energy[idx] / w.p.birth_threshold)
 
     def _draw_agents(self) -> None:
@@ -149,50 +182,64 @@ class Viewer:
     def _text(self, s: str, x: int, y: int, color=FG) -> None:
         self.screen.blit(self.font.render(s, True, color), (x, y))
 
-    def _plot(self, series, x: int, y: int, w: int, h: int, label: str, color) -> None:
+    def _plot(self, x: int, y: int, w: int, h: int, series, fixed=None) -> None:
+        """series: list of (label, deque, colour). fixed: (lo, hi) or None for auto range."""
         pygame.draw.rect(self.screen, (40, 40, 48), (x, y, w, h), 1)
-        vals = list(series)
-        self._text(f"{label}: {vals[-1]:.3g}" if vals else label, x + 4, y + 2, MUTED)
-        if len(vals) < 2:
+        lx = x + 4
+        for label, d, col in series:
+            txt = f"{label} {d[-1]:.3g}" if d else label
+            self._text(txt, lx, y + 2, col)
+            lx += self.font.size(txt)[0] + 12
+        vals = [v for _, d, _ in series for v in d]
+        if not vals:
             return
-        lo, hi = min(vals), max(vals)
-        span = hi - lo or 1.0
-        n = len(vals)
-        pts = [(x + int(i * (w - 1) / (HISTORY - 1)), y + h - 2 - int((v - lo) / span * (h - 22)))
-               for i, v in enumerate(vals)]
-        if n >= 2:
-            pygame.draw.lines(self.screen, color, False, pts, 1)
+        lo, hi = fixed if fixed else (min(vals), max(vals))
+        span = (hi - lo) or 1.0
+        for _, d, col in series:
+            if len(d) < 2:
+                continue
+            pts = [(x + int(i * (w - 1) / (HISTORY - 1)),
+                    y + h - 2 - int((min(max(v, lo), hi) - lo) / span * (h - 22)))
+                   for i, v in enumerate(d)]
+            pygame.draw.lines(self.screen, col, False, pts, 1)
 
     def _draw_panel(self) -> None:
         x0 = VIEW + 16
         w = self.world
         c = w.census()
+        a = w.alive
+        g = w.genome[a]
+        p_share = float(propensity(g, G.SHARE_W, 1.0).mean()) if a.any() else 0.0
+        p_attack = float(propensity(g, G.ATTACK_W, 0.5).mean()) if a.any() else 0.0
         lines = [
             f"step        {w.step_count}",
             f"population  {c['population']}",
             f"mean energy {c.get('mean_energy', 0):.2f}",
-            f"mean age    {c.get('mean_age', 0):.0f}",
             f"births      {c['total_births']}",
-            f"deaths      {c['total_deaths']}",
+            f"died/killed {c['total_deaths']}/{c['total_killed']}",
+            f"p(share|kin)       {p_share:.3f}",
+            f"p(attack|stranger) {p_attack:.3f}",
+            f"harvest     {c.get('mean_harvest', 0):.3f}",
             "",
-            f"seed        {w.p.seed}",
-            f"speed       {self.steps_per_frame} step/frame",
+            f"seed {w.p.seed}   speed {self.steps_per_frame}/frame   fps {self.clock.get_fps():.0f}",
             f"colour by   {COLOR_MODES[self.color_mode]}",
-            f"fps         {self.clock.get_fps():.0f}",
             "PAUSED" if self.paused else "",
         ]
         for i, s in enumerate(lines):
-            self._text(s, x0, 16 + i * 18)
+            self._text(s, x0, 12 + i * 18)
 
-        y = 16 + len(lines) * 18 + 10
-        pw = PANEL - 32
-        self._plot(self.hist["population"], x0, y, pw, 110, "population", (120, 200, 255))
-        self._plot(self.hist["mean_harvest"], x0, y + 120, pw, 110, "mean harvest", (250, 210, 40))
-        self._plot(self.hist["total_food"], x0, y + 240, pw, 110, "total food", (90, 190, 110))
+        y = 12 + len(lines) * 18 + 6
+        pw, ph = PANEL - 32, 120
+        h = self.hist
+        self._plot(x0, y, pw, ph, [("population", h["population"], BLUE)])
+        self._plot(x0, y + ph + 8, pw, ph,
+                   [("share", h["share_rate"], YELLOW), ("attack", h["attack_rate"], RED)])
+        self._plot(x0, y + 2 * (ph + 8), pw, ph,
+                   [("sim met", h["sim_encounter"], MUTED), ("sim helped", h["sim_share"], GREEN)])
 
         help_lines = ["SPACE pause  RIGHT step", "UP/DOWN speed  C colour", "F food  R restart  N new seed"]
         for i, s in enumerate(help_lines):
-            self._text(s, x0, VIEW - 66 + i * 18, MUTED)
+            self._text(s, x0, VIEW - 62 + i * 18, MUTED)
 
     # ---------------------------------------------------------------- loop
 
@@ -218,6 +265,7 @@ def main(argv=None) -> int:
     ap.add_argument("--config", type=Path, help="YAML file with Params overrides")
     ap.add_argument("--seed", type=int)
     ap.add_argument("--speed", type=int, default=1, help="initial steps per frame")
+    ap.add_argument("--color", choices=COLOR_MODES, default="tag", help="initial colour mode")
     ap.add_argument("--frames", type=int, default=0, help="quit after N frames (0 = run until closed)")
     ap.add_argument("--screenshot", type=Path, help="save the last frame to this PNG on exit")
     args = ap.parse_args(argv)
@@ -227,6 +275,7 @@ def main(argv=None) -> int:
         params = params.replace(seed=args.seed)
     v = Viewer(params)
     v.steps_per_frame = max(1, args.speed)
+    v.color_mode = COLOR_MODES.index(args.color)
     v.run(max_frames=args.frames, screenshot=args.screenshot)
     return 0
 
