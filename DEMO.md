@@ -51,6 +51,12 @@ Nikt tu niczego „dla dobra gatunku” nie robi. Selekcja działa na geny, a al
 Dwa światy obok siebie. Różnią się tylko tym, kto dostaje dar:
 
 ```bash
+./demo.sh            # albo: ./demo.sh <ziarno> <kroki na klatkę>
+```
+
+Co robi skrypt:
+
+```bash
 .venv/bin/python -m kin_dots.viz.compare --left configs/demo_sacrifice.yaml --right configs/demo_sacrifice_strangers.yaml \
   --left-label "dar dla sąsiada" --right-label "dar dla obcego" --metric sacrifice_frac --speed 64
 ```
