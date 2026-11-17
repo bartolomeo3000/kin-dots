@@ -39,7 +39,7 @@ MUTED = (140, 140, 150)
 LEFT_C = (250, 210, 40)
 RIGHT_C = (90, 220, 230)
 RECORD_EVERY = 10   # steps between plotted samples (the whole run is always shown)
-COLOR_MODES = ("p(give)", "energy", "tag", "p(alarm|kin)", "garden")
+COLOR_MODES = ("p(give)", "energy", "tag")  # tag = inherited colour: shows family lineages
 
 
 def _ramp(t):
@@ -103,10 +103,6 @@ def draw_world(screen, side: Side, x0: int, y0: int, mode: str, show_food: bool,
         cols = (40 + 215 * g[:, G.TAG]).astype(np.uint8)
     elif mode == "energy":
         cols = _ramp(w.energy[idx] / w.p.birth_threshold)
-    elif mode == "p(alarm|kin)":
-        cols = _ramp(G.propensity(g, G.ALARM_W, 1.0, 0.5, 0.3))
-    elif mode == "garden":
-        cols = _ramp(g[:, G.GARDEN])
     else:
         # per-step probability to give, at the agent's CURRENT energy, using only the inputs
         # the decision can see; log scale 1e-4 .. 1e-1 (blue = never, yellow = often)
