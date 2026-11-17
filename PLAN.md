@@ -59,20 +59,46 @@ Każdy eksperyment to **N ≥ 10 ziaren**, a wynikiem jest rozkład, nie pojedyn
 
 ## 5. Architektura
 
-- **TypeScript + Vite**, render na Canvas 2D (WebGL tylko jeśli zabraknie wydajności).
-- `src/core/`: czysta, deterministyczna symulacja (seeded RNG, typed arrays, spatial hash) bez zależności od DOM.
-- `src/ui/`: canvas, suwaki parametrów, wykresy na żywo (uPlot), kliknięcie w agenta pokazuje jego genom i linię przodków.
-- `src/headless/`: runner w Node do eksperymentów wsadowych, wyniki w CSV/JSON.
-- `analysis/`: notebook Pythona do wykresów z wyników wsadowych.
-- Cel wydajnościowy: ~2–5 tys. agentów przy 60 FPS w przeglądarce, a headless jak najszybciej.
+**Python 3.11+, NumPy, Numba, pygame.** Projekt zarządzany przez `pyproject.toml` (uv lub pip + venv).
+
+- **Stan jako tablice, nie obiekty.** Agenci to zestaw tablic NumPy (`x`, `y`, `energy`, `age`, `parent_id`, `genome[N, G]`, `alive`), a jedzenie to tablica 2D. Martwe sloty są ponownie używane (wolna lista), żeby uniknąć ciągłego kopiowania.
+- **Wektorowo w NumPy:** odrost jedzenia, metabolizm, śmierć i mutacje, czyli wszystko, co liczy się dla każdego agenta niezależnie.
+- **Numba (`@njit`) dla pętli z sąsiadami:** budowa spatial hasha, dzielenie się, atak, ruch w stronę jedzenia lub sąsiadów. Kod wygląda jak zwykła pętla `for`, ale działa mniej więcej z szybkością C.
+- **Determinizm:** jedno ziarno → `np.random.Generator`, a w funkcjach Numby jawnie przekazywane ziarno. Ten sam config i to samo ziarno dają ten sam przebieg.
+- **Parametry:** jeden `dataclass` `Params` serializowany do YAML/JSON. Presety E0–E5 to pliki w `configs/`.
+
+Struktura:
+
+```
+kin_dots/
+  core/          # czysta symulacja, bez grafiki
+    params.py    #   dataclass Params
+    world.py     #   stan (tablice) + step()
+    kernels.py   #   funkcje @njit (sąsiedzi, interakcje)
+    genealogy.py #   drzewo przodków, pokrewieństwo
+    metrics.py   #   Hamilton, Price, klastry
+  viz/
+    app.py       # okno pygame: kropki, suwaki, pauza/krok, inspektor agenta, mini-wykresy
+  experiments/
+    run.py       # CLI: config + ziarna → CSV/Parquet, równolegle przez multiprocessing
+configs/         # presety E0–E5
+analysis/        # notebooki Jupyter (pandas + matplotlib)
+tests/           # pytest: zachowanie energii, determinizm, brak ukrytych nagród
+```
+
+Cele wydajnościowe:
+- podgląd: ~3–5 tys. agentów przy ≥30 FPS (render pygame co krok lub co k kroków),
+- headless: ≥1000 kroków/s przy tej samej populacji, bez renderu.
+
+Uwaga: pierwsze uruchomienie trwa kilka sekund dłużej, bo Numba kompiluje funkcje (`cache=True` zapisuje wynik na dysku).
 
 ## 6. Kamienie milowe
 
-1. **M1: Szkielet.** Vite + TS, seeded RNG, świat z jedzeniem, agenci z ruchem, jedzeniem, metabolizmem, rozmnażaniem i śmiercią. Populacja stabilna.
-2. **M2: Interakcje.** Dzielenie się i atak przez sigmoidy z genomu, mutacje, znaczniki jako kolor.
-3. **M3: Instrumentacja.** Drzewo genealogiczne, metryki z sekcji 3, panel wykresów.
-4. **M4: UI.** Suwaki (`b`, `c`, `d`, mutacje, odrost jedzenia), pauza/krok, inspektor agenta, presety eksperymentów E0–E5.
-5. **M5: Headless + eksperymenty.** Runner wsadowy, przemiatanie parametrów, diagram fazowy E4.
+1. **M1: Szkielet.** `pyproject.toml`, `Params`, seeded RNG, świat z jedzeniem, agenci z ruchem, jedzeniem, metabolizmem, rozmnażaniem i śmiercią. Prosty podgląd w pygame. Populacja stabilna. Testy determinizmu i bilansu energii.
+2. **M2: Interakcje.** Spatial hash w Numbie, dzielenie się i atak przez sigmoidy z genomu, mutacje, znaczniki jako kolor kropki.
+3. **M3: Instrumentacja.** Drzewo genealogiczne, metryki z sekcji 3, mini-wykresy w oknie i zapis szeregów czasowych.
+4. **M4: UI.** Suwaki (`b`, `c`, `d`, mutacje, odrost jedzenia), pauza/krok, inspektor agenta po kliknięciu, ładowanie presetów E0–E5.
+5. **M5: Eksperymenty.** `experiments/run.py` z `multiprocessing`, przemiatanie parametrów, notebook z diagramem fazowym E4.
 6. **M6 (v2).** Drapieżniki i sygnały ostrzegawcze, rozmnażanie płciowe, ewoluujące sieci neuronowe zamiast sigmoid.
 
 ## 7. Ryzyka
