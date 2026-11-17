@@ -83,13 +83,19 @@ Wyraźna różnica pojawia się po ~10 tys. kroków. Przy prędkości 64 to kilk
 
 - **Rozmnażanie jest bezpłciowe,** więc krewni to prawie klony. Przy rozmnażaniu płciowym (pokrewieństwo ½ i mniej) efekt byłby słabszy.
 - **Parametry świata dobrałem tak, żeby efekt był wyraźny.** Właśnie dlatego kontrola jest kluczowa: różni się *jedną* regułą (kto dostaje dar), a wynik idzie w przeciwną stronę.
-- **Przy wcześniejszej wersji akcji,** czyli oddawaniu jednej jednostki energii zamiast całej, sprawdziłem wrażliwość na parametry. Efekt słabnie, gdy:
-  - zimy są łagodne albo krótkie,
-  - kropki ruszają się szybciej,
-  - dziecko rodzi się dalej od rodzica,
-  - nie ma starzenia.
+- **Efekt słabnie, ale nie znika, gdy świat jest łagodniejszy albo rodziny trzymają się mniej razem.** Odsetek śmierci przez poświęcenie po ~19 tys. kroków (2 przebiegi na wariant, `results/sac_robust`):
 
-  Tak przewiduje teoria. Dla samego poświęcenia tej wrażliwości jeszcze nie sprawdzałem.
+  | wariant | poświęcenia |
+  |---|---|
+  | preset (zima 0.9, ruch 0.1) | ~70% |
+  | łagodniejsza zima 0.8 / 0.7 | ~60% / ~48% |
+  | szybszy ruch 0.2 | ~56% |
+  | dziecko dalej od rodzica (sd 4 zamiast 2) | ~56% |
+  | krótsze pory roku (400 zamiast 600 kroków) | ~38% |
+  | **kontrola: dar dla obcego** (zima 0.8) | **~8%** |
+
+  Tak przewiduje teoria: im srożej i im bliżej rodziny, tym więcej poświęcenia.
+- **Pierwsze zimy to wąskie gardło.** Zanim poświęcenie się rozpowszechni, populacja przechodzi przez cykl dwuletni. Po pierwszej i trzeciej zimie zostaje czasem tylko 10–130 kropek. Sprawdziłem ziarna 0–7 i wszystkie przeżywają, ale dla innego ziarna demo może wymrzeć na starcie. Wtedy trzeba uruchomić je z innym `--seed` (`R` restartuje to samo ziarno, więc nie pomoże).
 - **Prawdopodobieństwo jest liczone na krok.** Nawet 0.6% na krok przez ~300 kroków życia daje dużą szansę na poświęcenie w ciągu życia.
 
 ## Inne wyniki z tego projektu
