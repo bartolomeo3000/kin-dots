@@ -1,0 +1,24 @@
+[build-system]
+requires = ["setuptools>=64"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "kin-dots"
+version = "0.1.0"
+description = "Evolutionary agent simulation for studying emergent altruism"
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = [
+    "numpy>=1.24",
+    "pygame>=2.5",
+    "pyyaml>=6",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=7"]
+
+[tool.setuptools.packages.find]
+include = ["kin_dots*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
