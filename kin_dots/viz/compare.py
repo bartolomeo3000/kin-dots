@@ -6,13 +6,18 @@
 Both worlds advance in lockstep. Below them, one plot shows the chosen metric
 for both (left = yellow, right = cyan): its mean over the last full season.
 
-Keys: SPACE pause, UP/DOWN speed, C colour mode, F food layer, G energy gifts (white
-lines donor -> recipient), R restart, ESC quit.
+Keys: SPACE pause, UP/DOWN max steps per frame, C colour mode, F food layer, G energy gifts
+(white lines donor -> recipient), R restart, ESC quit.
+
+The window fits the screen (or use --view). Each frame simulates as many steps as fit
+into --budget-ms (and at most the current max steps per frame), so the window stays
+responsive however slow the simulation is.
 """
 from __future__ import annotations
 
 import argparse
 import os
+import time
 from collections import deque
 from pathlib import Path
 
@@ -24,10 +29,10 @@ import pygame  # noqa: E402
 from kin_dots.core import Params, World  # noqa: E402
 from kin_dots.core import genome as G  # noqa: E402
 
-VIEW = 540
-GAP = 20
-PLOT_H = 200
-TEXT_H = 92
+VIEW = 540          # world view size in pixels (recomputed to fit the screen in main())
+GAP = 16
+PLOT_H = 170
+TEXT_H = 72
 BG = (18, 18, 22)
 FG = (225, 225, 230)
 MUTED = (140, 140, 150)
@@ -42,6 +47,18 @@ def _ramp(t):
     lo = np.array([40, 90, 220])
     hi = np.array([250, 210, 40])
     return (lo + (hi - lo) * t).astype(np.uint8)
+
+
+def _metric(w: World, metric: str) -> float:
+    """Cheap per-step metrics from the step ledger; anything else via the full census."""
+    L = w.last
+    if metric == "sacrifice_frac":
+        died = L.get("deaths", 0) + L.get("killed", 0) + L.get("predated", 0) + L.get("sacrifices", 0)
+        return L.get("sacrifices", 0) / died if died else float("nan")
+    if metric == "share_rate":
+        enc = L.get("encounters", 0)
+        return L.get("shares", 0) / enc if enc else float("nan")
+    return float(w.census().get(metric, float("nan")))
 
 
 class Side:
@@ -60,7 +77,7 @@ class Side:
         if w.population == 0:
             return
         w.step()
-        v = w.census().get(metric, float("nan"))
+        v = _metric(w, metric)
         if v == v:
             self.window.append(v)
         if len(self.window) == self.window.maxlen and w.step_count % RECORD_EVERY == 0:
@@ -69,14 +86,17 @@ class Side:
 
 def draw_world(screen, side: Side, x0: int, y0: int, mode: str, show_food: bool, show_gifts: bool = True):
     w = side.world
+    n = w.p.grid_cells
+    cell = np.arange(VIEW) * n // VIEW  # view pixel -> food cell
     if show_food:
         t = np.sqrt(w.food / w.p.food_capacity)[..., None]
         rgb = (np.array(BG) * (1 - t) + np.array([30, 95, 45]) * t).astype(np.uint8)
-        screen.blit(pygame.transform.scale(pygame.surfarray.make_surface(rgb), (VIEW, VIEW)), (x0, y0))
+        canvas = rgb[cell][:, cell].copy()  # indexed [x, y] like pygame.surfarray
     else:
-        pygame.draw.rect(screen, (10, 10, 12), (x0, y0, VIEW, VIEW))
+        canvas = np.full((VIEW, VIEW, 3), 10, dtype=np.uint8)
     idx = np.flatnonzero(w.alive)
     if idx.size == 0:
+        screen.blit(pygame.surfarray.make_surface(canvas), (x0, y0))
         return
     g = w.genome[idx]
     if mode == "tag":
@@ -102,11 +122,13 @@ def draw_world(screen, side: Side, x0: int, y0: int, mode: str, show_food: bool,
         prob = 1.0 / (1.0 + np.exp(-z))
         cols = _ramp((np.log10(np.maximum(prob, 1e-6)) + 4.0) / 3.0)
     s = VIEW / w.p.world_size
-    px = (w.x[idx] * s).astype(int) + x0
-    py = (w.y[idx] * s).astype(int) + y0
-    circle = pygame.draw.circle
-    for x, y, c in zip(px.tolist(), py.tolist(), cols.tolist()):
-        circle(screen, c, (x, y), 2)
+    # all agents at once: 2x2-pixel squares written into the pixel array of the view
+    px = np.minimum((w.x[idx] * s).astype(int), VIEW - 2)
+    py = np.minimum((w.y[idx] * s).astype(int), VIEW - 2)
+    for dx in (0, 1):
+        for dy in (0, 1):
+            canvas[px + dx, py + dy] = cols
+    screen.blit(pygame.surfarray.make_surface(canvas), (x0, y0))
     if show_gifts and len(w.last_gifts):
         half = w.p.world_size / 2
         for xa, ya, xb, yb in w.last_gifts.tolist():
@@ -123,7 +145,10 @@ def main(argv=None) -> int:
     ap.add_argument("--right-label", default=None)
     ap.add_argument("--metric", default="share_rate", help="census key to plot for both worlds")
     ap.add_argument("--seed", type=int, default=0)
-    ap.add_argument("--speed", type=int, default=8)
+    ap.add_argument("--speed", type=int, default=64, help="max simulation steps per frame")
+    ap.add_argument("--budget-ms", type=float, default=50.0,
+                    help="max time per frame spent simulating (keeps the window responsive)")
+    ap.add_argument("--view", type=int, default=0, help="world view size in pixels (0 = fit the screen)")
     ap.add_argument("--color", choices=COLOR_MODES, default=COLOR_MODES[0])
     ap.add_argument("--frames", type=int, default=0)
     ap.add_argument("--screenshot", type=Path)
@@ -135,6 +160,15 @@ def main(argv=None) -> int:
                   args.right_label or args.right.stem)]
     pygame.init()
     pygame.display.set_caption("kin-dots: compare")
+    global VIEW
+    if args.view > 0:
+        VIEW = args.view
+    else:
+        info = pygame.display.Info()
+        if info.current_w > 0 and info.current_h > 0:
+            avail_h = info.current_h - 130  # menu bar, title bar, dock
+            VIEW = max(200, min(560, avail_h - (3 * GAP + TEXT_H + PLOT_H + GAP),
+                                (info.current_w - 3 * GAP) // 2))
     W_ = 2 * VIEW + 3 * GAP
     H_ = GAP + TEXT_H + VIEW + GAP + PLOT_H + GAP
     screen = pygame.display.set_mode((W_, H_))
@@ -143,6 +177,7 @@ def main(argv=None) -> int:
     clock = pygame.time.Clock()
     paused, speed, mode, show_food, frame = False, max(1, args.speed), COLOR_MODES.index(args.color), True, 0
     show_gifts = True
+    sim_rate = deque(maxlen=30)  # (steps, seconds) of recent frames, for the steps/s readout
 
     running = True
     while running:
@@ -168,9 +203,13 @@ def main(argv=None) -> int:
                     for s in sides:
                         s.reset()
         if not paused:
-            for _ in range(speed):
+            t0 = time.perf_counter()
+            done = 0
+            while done < speed and (time.perf_counter() - t0) * 1000 < args.budget_ms:
                 for s in sides:
                     s.step(args.metric)
+                done += 1
+            sim_rate.append((done, time.perf_counter() - t0))
 
         screen.fill(BG)
         for k, s in enumerate(sides):
@@ -178,11 +217,10 @@ def main(argv=None) -> int:
             w = s.world
             col = LEFT_C if k == 0 else RIGHT_C
             screen.blit(big.render(s.label, True, col), (x0, GAP))
-            c = w.census()
             cur = s.hist[-1] if s.hist else float("nan")
-            screen.blit(font.render(f"step {w.step_count}   population {c['population']}", True, FG),
-                        (x0, GAP + 28))
-            screen.blit(font.render(f"{args.metric} {cur:.4f}", True, col), (x0, GAP + 50))
+            screen.blit(font.render(f"step {w.step_count}   population {w.population}", True, FG),
+                        (x0, GAP + 26))
+            screen.blit(font.render(f"{args.metric} {cur:.3f}", True, col), (x0, GAP + 46))
             draw_world(screen, s, x0, GAP + TEXT_H, COLOR_MODES[mode], show_food, show_gifts)
 
         # shared plot
@@ -206,8 +244,10 @@ def main(argv=None) -> int:
             screen.blit(font.render(f"{args.metric} (mean over the last season): whole run, {steps} steps",
                                     True, MUTED),
                         (GAP + 6, py0 + 4))
-        info = (f"speed {speed}/frame   colour: {COLOR_MODES[mode]}   "
-                f"SPACE pause  UP/DOWN speed  C colour  F food  G gifts  R restart")
+        st = sum(a for a, _ in sim_rate)
+        rate = st / max(sum(b for _, b in sim_rate), 1e-9) if st else 0.0
+        info = (f"~{rate:.0f} steps/s (max {speed}/frame)  colour: {COLOR_MODES[mode]}  |  "
+                f"SPACE pause  UP/DOWN  C colour  F food  G gifts  R")
         screen.blit(font.render(info, True, MUTED), (GAP + 6, py0 + PLOT_H - 22))
         pygame.display.flip()
         clock.tick(60)
