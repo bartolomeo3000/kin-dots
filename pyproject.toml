@@ -7,8 +7,9 @@ name = "kin-dots"
 version = "0.1.0"
 description = "Evolutionary agent simulation for studying emergent altruism"
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 dependencies = [
+    "numba>=0.60",
     "numpy>=1.24",
     "pygame>=2.5",
     "pyyaml>=6",
