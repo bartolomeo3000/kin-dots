@@ -1,0 +1,103 @@
+# Demo: kropki, które oddają życie za rodzinę
+
+![Poświęcenie w czasie](docs/demo_sacrifice.png)
+
+## Zasady (do opowiedzenia w minutę)
+
+1. Na mapie rośnie trawa. Zimą odrasta dużo wolniej (pory roku).
+2. Kropki powoli chodzą w stronę trawy i ją jedzą. Każdy krok kosztuje trochę energii.
+3. Kropka z zerową energią umiera z głodu. Po 300 krokach umiera ze starości.
+4. Gdy kropka uzbiera 20 energii, dzieli się na dwie. Dziecko pojawia się tuż obok i dziedziczy geny z drobną mutacją.
+5. **Jedna dodatkowa możliwość:** w każdym kroku kropka może **oddać całą swoją energię losowemu sąsiadowi i umrzeć**.
+6. O tym, jak często to robi, decyduje genom złożony z **dwóch liczb**: `p = sigmoid(a + b · moja energia)`. Na starcie `a = −9`, więc tak umiera tylko ~5% kropek.
+
+**Czego w modelu nie ma:**
+- rozpoznawania krewnych (kropki nie widzą, kto jest kim),
+- nagrody za pomoc ani pojęcia grupy czy gatunku „do ratowania”,
+- walk i komunikacji,
+- jakiejkolwiek reguły, która mówi „pomagaj rodzinie”.
+
+## Pytanie do widowni
+
+> Kropka, która się poświęca, umiera i nie ma już dzieci. Czy po 30 tysiącach kroków poświęceń będzie więcej, czy mniej?
+
+Prawie każdy odpowie, że gen „zabij się” szybko wyginie.
+
+## Wynik
+
+| | na starcie | po 30 000 kroków |
+|---|---|---|
+| **dar trafia do sąsiada** | ~5% śmierci to poświęcenia | **~70%** (3 z 3 przebiegów) |
+| dar trafia do losowej kropki z mapy (kontrola) | ~5% | 5–10% (3 z 3) |
+
+**Co dokładnie wyewoluowało:**
+- Ewoluuje reguła **„poświęcam się, kiedy jestem słaby”** (gen `b` spada do ≈ −3.5). W połowie przebiegu reguła przez chwilę idzie w przeciwną stronę: poświęcają się raczej najedzeni (środkowy wykres).
+- Kropki, które się poświęcają, **nie są na skraju śmierci**. Mają ~9.6 energii przy średniej ~12.5, a śmierć głodowa przychodzi dopiero przy 0. Tracą więc realną szansę na przeżycie i potomstwo.
+- **Efekt uboczny, którego nikt nie zaprojektował:** w świecie kontrolnym populacja wpada w cykl dwuletni, czyli rok obfitości, potem rok krachu (prawy wykres, średnia z każdej pory roku skacze między ~1500 a ~3500). W świecie z poświęceniem ten cykl wygasa, a populacja stabilizuje się na ~4300.
+- **Samobójstwo bez daru** (kropka umiera, a jej energia przepada) daje mieszane wyniki: 61%, 44% i 6% śmierci w trzech przebiegach. Liczy się więc *dar dla krewnych*, a nie samo zwolnienie miejsca.
+
+## Dlaczego tak się dzieje
+
+Dziecko rodzi się obok rodzica, a kropki prawie się nie ruszają, więc **sąsiad to prawie zawsze bliski krewny**. W modelu bezpłciowym oznacza to niemal kopię tych samych genów (zmierzone pokrewieństwo genetyczne ~0.75).
+
+Słaba kropka zimą ma marne szanse dożyć wiosny i się rozmnożyć. Gen „gdy jesteś słaby, oddaj wszystko sąsiadowi” przenosi więc jej energię do silniejszych krewnych, którzy noszą *ten sam gen* i mają większą szansę go przekazać.
+
+To jest **reguła Hamiltona**: pomoc opłaca się, gdy zysk biorcy pomnożony przez pokrewieństwo przewyższa koszt dawcy. W kontroli dar trafia do obcych (pokrewieństwo ≈ 0), więc gen nie zyskuje nic i nie rośnie.
+
+Nikt tu niczego „dla dobra gatunku” nie robi. Selekcja działa na geny, a altruizm jest jej skutkiem ubocznym.
+
+## Jak to puścić
+
+Dwa światy obok siebie. Różnią się tylko tym, kto dostaje dar:
+
+```bash
+.venv/bin/python -m kin_dots.viz.compare --left configs/demo_sacrifice.yaml --right configs/demo_sacrifice_strangers.yaml \
+  --left-label "dar dla sąsiada" --right-label "dar dla obcego" --metric sacrifice_frac --speed 64
+```
+
+![Podgląd porównawczy](docs/demo_compare.png)
+
+**Co jest na ekranie:**
+- **Kolor kropki** pokazuje, jak skłonna jest *teraz* do poświęcenia: niebieska prawie nigdy, żółta często (skala logarytmiczna). Lewy świat z czasem żółknie, prawy zostaje niebieski.
+- **Białe kreski** to dary z ostatniego kroku. W lewym świecie są krótkie, od dawcy do sąsiada. W prawym biegną przez całą mapę.
+- **Wykres na dole** pokazuje odsetek śmierci, które są poświęceniem, uśredniony po porze roku, za cały przebieg.
+- **Klawisze:**
+  - `SPACJA` pauza, `↑/↓` szybkość, `R` restart,
+  - `C` zmienia kolorowanie (np. energia),
+  - `F` pokazuje albo ukrywa trawę, `G` pokazuje albo ukrywa dary.
+
+Wyraźna różnica pojawia się po ~10 tys. kroków. Przy prędkości 64 to kilka minut.
+
+**Wykres z artykułu można odtworzyć** (~8 minut na 6 rdzeniach):
+
+```bash
+.venv/bin/python -m kin_dots.experiments.sweep --steps 30000 --seeds 0 1 2 --windows 50 --procs 6 --out results/demo_curves \
+  --cond-config sacrifice-local configs/demo_sacrifice.yaml --cond-config sacrifice-strangers configs/demo_sacrifice_strangers.yaml
+```
+
+```bash
+.venv/bin/python analysis/plot_sacrifice.py results/demo_curves docs/demo_sacrifice.png
+```
+
+## Uczciwe zastrzeżenia
+
+- **Rozmnażanie jest bezpłciowe,** więc krewni to prawie klony. Przy rozmnażaniu płciowym (pokrewieństwo ½ i mniej) efekt byłby słabszy.
+- **Parametry świata dobrałem tak, żeby efekt był wyraźny.** Właśnie dlatego kontrola jest kluczowa: różni się *jedną* regułą (kto dostaje dar), a wynik idzie w przeciwną stronę.
+- **Przy wcześniejszej wersji akcji,** czyli oddawaniu jednej jednostki energii zamiast całej, sprawdziłem wrażliwość na parametry. Efekt słabnie, gdy:
+  - zimy są łagodne albo krótkie,
+  - kropki ruszają się szybciej,
+  - dziecko rodzi się dalej od rodzica,
+  - nie ma starzenia.
+
+  Tak przewiduje teoria. Dla samego poświęcenia tej wrażliwości jeszcze nie sprawdzałem.
+- **Prawdopodobieństwo jest liczone na krok.** Nawet 0.6% na krok przez ~300 kroków życia daje dużą szansę na poświęcenie w ciągu życia.
+
+## Inne wyniki z tego projektu
+
+Szczegóły są w [PLAN.md](PLAN.md), sekcja 8.
+- **Oddawanie po jednej jednostce energii** (`configs/kin_altruism.yaml`): wyewoluowało „biedni oddają bogatszym krewnym”. Pomoc trafia do bliższych krewnych niż przeciętni sąsiedzi.
+- **Powściągliwość w walce** (`configs/kin_restraint.yaml`): kropki rzadziej atakują krewnych.
+- **Nie zadziałały:**
+  - krzyk ostrzegawczy przed drapieżnikami (wynik niejednoznaczny),
+  - powściągliwość w jedzeniu (to był egoizm, nie altruizm),
+  - nawożenie trawy jako dobro wspólne (gen zanikał).

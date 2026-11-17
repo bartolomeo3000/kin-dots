@@ -43,7 +43,8 @@ def test_event_log_ring_keeps_newest_and_drains():
     for start in (0, 3):
         n = 3
         log.append(kind=np.zeros(n, np.int8), actor=np.arange(start, start + n), target=np.zeros(n),
-                   d2=np.zeros(n), sim=np.zeros(n), actor_e=np.zeros(n), target_e=np.zeros(n))
+                   d2=np.zeros(n), sim=np.zeros(n), actor_e=np.zeros(n), target_e=np.zeros(n),
+                   step=np.zeros(n, np.int64))
     ev = log.drain()
     assert list(ev["actor"]) == [1, 2, 3, 4, 5]
     assert log.drain()["actor"].size == 0

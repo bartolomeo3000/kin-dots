@@ -33,6 +33,7 @@ class Genealogy:
         self.parent = np.full(capacity, NO_PARENT, dtype=np.int64)
         self.depth = np.zeros(capacity, dtype=np.int64)   # generations since a founder
         self.birth = np.zeros(capacity, dtype=np.int64)   # step of birth
+        self.death = np.full(capacity, -1, dtype=np.int64)  # step of death (-1 = alive)
         self.n = 0                                         # ids 0..n-1 are known
 
     def _grow(self, need: int) -> None:
@@ -40,7 +41,7 @@ class Genealogy:
         if need <= cap:
             return
         new = max(need, 2 * cap)
-        for name, fill in (("parent", NO_PARENT), ("depth", 0), ("birth", 0)):
+        for name, fill in (("parent", NO_PARENT), ("depth", 0), ("birth", 0), ("death", -1)):
             old = getattr(self, name)
             arr = np.full(new, fill, dtype=old.dtype)
             arr[:cap] = old
@@ -95,7 +96,8 @@ def _mrca_distance(a, b, parent, depth):
 
 class EventLog:
     FIELDS = (("kind", np.int8), ("actor", np.int64), ("target", np.int64), ("d2", np.float64),
-              ("sim", np.float64), ("actor_e", np.float64), ("target_e", np.float64))
+              ("sim", np.float64), ("actor_e", np.float64), ("target_e", np.float64),
+              ("step", np.int64))
 
     def __init__(self, capacity: int = 100_000):
         self.cap = capacity

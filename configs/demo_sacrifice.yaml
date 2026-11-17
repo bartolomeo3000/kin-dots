@@ -1,0 +1,19 @@
+# DEMO: poświęcenie. Kropka może oddać CAŁĄ swoją energię losowemu sąsiadowi i umrzeć.
+# Genom = 2 liczby: p(poświęcenie na krok) = sigmoid(a + b * moja_energia / 20).
+# Kropki nie rozpoznają krewnych (nie widzą kolorów), nie walczą, nie mają innych akcji.
+# Świat: trawa odrasta, zimą wolniej (pory roku); dziecko rodzi się obok rodzica; wolny ruch.
+world_size: 300.0
+grid_cells: 75
+init_agents: 2500
+food_init_frac: 0.5
+move_speed: 0.1           # rodziny zostają razem
+season_period: 600        # długa, sroga zima
+season_amplitude: 0.9
+attacks_enabled: false
+social_movement: false
+tag_blind_share: true     # decyzja nie widzi podobieństwa (brak rozpoznawania krewnych)
+share_sees_other: false   # ...ani energii biorcy: tylko własną
+share_all: true           # dar = cała energia, dawca umiera
+founder_share_bias: -9.0  # na starcie poświęcenie jest bardzo rzadkie
+mutation_sd: 0.0          # zachłanność w jedzeniu stała (jedyne ewoluujące geny to te 2 liczby)
+founder_harvest: 0.5

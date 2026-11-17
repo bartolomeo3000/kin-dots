@@ -232,3 +232,48 @@ def test_share_to_random_can_reach_far_agents():
         w._interact(np.arange(3))
         got_far |= w.energy[2] > 10.0
     assert got_far  # agent 2 is never a neighbour of agent 0
+
+
+@pytest.mark.parametrize("to_random", [False, True])
+def test_gardening_costs_energy_and_raises_fertility(to_random):
+    w = World(SMALL.replace(garden_enabled=True, founder_garden=1.0, garden_to_random=to_random))
+    for _ in range(50):
+        e0 = w.total_energy()
+        w.step()
+        L = w.last
+        de = (L["eaten"] - L["metabolic"] - L["movement"] - L["birth_cost"] - L["death_removed"]
+              - L["share_given"] + L["share_received"] - L["attack_cost"] - L["killed_energy"]
+              + L["predation_gain"] - L["alarm_cost"] - L["predated_energy"] - L["garden_cost"])
+        assert w.total_energy() - e0 == pytest.approx(de, abs=1e-6)
+    assert L["garden_cost"] > 0 and w.fertility.sum() > 0
+
+
+def test_freeze_harvest_keeps_the_gene_fixed():
+    w = World(SMALL.replace(freeze_harvest=True, mutation_sd=0.5, founder_harvest=0.3))
+    for _ in range(200):
+        w.step()
+    assert np.allclose(w.genome[w.alive, G.HARVEST], 0.3)
+
+
+def test_sacrifice_gives_everything_and_dies():
+    w = _two_agents(share_all=True)
+    w.genome[0, G.SHARE_W] = [50, 0, 0, 0]
+    w.energy[0] = 7.0
+    out = w._interact(np.arange(2))
+    assert out["sacrifices"] == 1 and not w.alive[0] and w.energy[0] == 0.0
+    assert w.energy[1] == pytest.approx(10.0 + 7.0 * w.p.share_benefit / w.p.share_cost)
+    assert out["share_given"] == pytest.approx(7.0)
+
+
+def test_ledger_balances_with_sacrifice():
+    w = World(SMALL.replace(share_all=True))
+    w.genome[w.alive, G.SHARE_W] = [-2, 0, -3, 0]
+    for _ in range(200):
+        e0 = w.total_energy()
+        w.step()
+        L = w.last
+        de = (L["eaten"] - L["metabolic"] - L["movement"] - L["birth_cost"] - L["death_removed"]
+              - L["share_given"] + L["share_received"] - L["attack_cost"] - L["killed_energy"]
+              + L["predation_gain"] - L["alarm_cost"] - L["predated_energy"] - L["garden_cost"])
+        assert w.total_energy() - e0 == pytest.approx(de, abs=1e-6)
+    assert w.total_sacrificed > 0

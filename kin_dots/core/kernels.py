@@ -36,7 +36,8 @@ L_DEFENSES = 15       # a neighbour took the fight instead of the attacked agent
 L_DEFENDER_DIED = 16  # ...and died in it
 L_SIM_DEFEND = 17     # sum of tag similarity defender-victim
 L_CROSS_ATTACKS = 18  # attacks on the other species
-N_LEDGER = 19
+L_SACRIFICES = 19     # donors that gave all their energy and died (share_all)
+N_LEDGER = 20
 
 LOG_DEFEND = 5        # event kind for defend (matches genealogy.EV_DEFEND)
 
@@ -180,7 +181,8 @@ def interact(acting_k, idx, energy, alive, genome, share0, attack0, tag0, tag_bl
              share_to_random, log_i, log_j, log_kind, log_n,
              nbr_start, nbr, energy_scale, share_cost, share_benefit, attack_cost,
              predation_efficiency, u, buf, ledger,
-             species, fight_same_species, defense_enabled, defend0, slot_pos, seed):
+             species, fight_same_species, defense_enabled, defend0, slot_pos, seed, share_enabled,
+             share_sees_self, share_sees_other, share_all):
     """Agents meet one random living neighbour each and may attack it or donate energy.
 
     acting_k: shuffled positions into idx (the order in which agents act).
@@ -301,8 +303,10 @@ def interact(acting_k, idx, energy, alive, genome, share0, attack0, tag0, tag_bl
             continue  # no gifts to the other species
         s_in = 0.0 if tag_blind_share else sim
         z_sh = (genome[i, share0] + genome[i, share0 + 1] * s_in
-                + genome[i, share0 + 2] * ei + genome[i, share0 + 3] * ej)
-        if energy[i] > share_cost and u[m, 2] < _sigmoid(z_sh):
+                + (genome[i, share0 + 2] * ei if share_sees_self else 0.0)
+                + (genome[i, share0 + 3] * ej if share_sees_other else 0.0))
+        can_give = energy[i] > 0.0 if share_all else energy[i] > share_cost
+        if share_enabled and can_give and u[m, 2] < _sigmoid(z_sh):
             ledger[L_DONOR_E] += energy[i]
             ledger[L_RECIPIENT_E] += energy[j]
             n = log_n[0]
@@ -310,9 +314,15 @@ def interact(acting_k, idx, energy, alive, genome, share0, attack0, tag0, tag_bl
             log_j[n] = j
             log_kind[n] = 1
             log_n[0] = n + 1
-            energy[i] -= share_cost
-            energy[j] += share_benefit
+            amount = energy[i] if share_all else share_cost
+            got = amount * share_benefit / share_cost
+            energy[i] -= amount
+            energy[j] += got
             ledger[L_SHARES] += 1
-            ledger[L_SHARE_GIVEN] += share_cost
-            ledger[L_SHARE_RECEIVED] += share_benefit
+            ledger[L_SHARE_GIVEN] += amount
+            ledger[L_SHARE_RECEIVED] += got
             ledger[L_SIM_SHARE] += sim
+            if share_all:
+                energy[i] = 0.0
+                alive[i] = False
+                ledger[L_SACRIFICES] += 1

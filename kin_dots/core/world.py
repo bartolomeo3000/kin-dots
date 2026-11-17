@@ -16,7 +16,7 @@ can be checked exactly:
     d(total agent energy) = eaten - metabolic - movement - birth_cost - death_removed
                             - share_given + share_received
                             - attack_cost - killed_energy + predation_gain
-                            - alarm_cost - predated_energy
+                            - alarm_cost - predated_energy - garden_cost
     d(total food)         = food_growth - eaten
 """
 from __future__ import annotations
@@ -41,7 +41,7 @@ _LEDGER_KEYS = {
     "sim_encounter": K.L_SIM_ENCOUNTER, "sim_share": K.L_SIM_SHARE, "sim_attack": K.L_SIM_ATTACK,
     "donor_energy": K.L_DONOR_E, "recipient_energy": K.L_RECIPIENT_E,
     "defenses": K.L_DEFENSES, "defender_died": K.L_DEFENDER_DIED, "sim_defend": K.L_SIM_DEFEND,
-    "cross_attacks": K.L_CROSS_ATTACKS,
+    "cross_attacks": K.L_CROSS_ATTACKS, "sacrifices": K.L_SACRIFICES,
 }
 _PRED_KEYS = {
     "detections": PR.P_DETECTIONS, "alarms": PR.P_ALARMS, "warned": PR.P_WARNED,
@@ -76,6 +76,7 @@ class World:
 
         n = p.grid_cells
         self.food = np.full((n, n), p.food_capacity * p.food_init_frac)
+        self.fertility = np.zeros((n, n))  # gardening: multiplies the food regrowth rate by (1 + f)
 
         self.step_count = 0
         self.next_id = 0
@@ -84,7 +85,9 @@ class World:
         self.total_starved = 0  # starvation only
         self.total_killed = 0   # deaths in fights
         self.total_predated = 0  # deaths by predators
+        self.total_sacrificed = 0  # gave all energy away and died (share_all)
         self.last: Dict[str, float] = {}
+        self.last_gifts = np.zeros((0, 4))  # for drawing: rows (x_from, y_from, x_to, y_to)
         self.alert = np.zeros(cap, dtype=np.int64)   # steps left hiding (detected / warned)
         self.caller = np.zeros(cap, dtype=np.int8)   # called an alarm this step
 
@@ -107,7 +110,9 @@ class World:
         self.x[slots] = self.rng.random(k) * p.world_size
         self.y[slots] = self.rng.random(k) * p.world_size
         self.energy[slots] = p.init_energy
-        self.genome[slots] = G.founder_genomes(k, self.rng, p.founder_weight_sd)
+        self.genome[slots] = G.founder_genomes(k, self.rng, p.founder_weight_sd, p.founder_harvest,
+                                                p.founder_garden if p.garden_enabled else 0.0,
+                                                p.founder_share_bias)
         self.id[slots] = np.arange(k)
         self.next_id = k
         self.genealogy.add(self.id[slots], np.full(k, -1, dtype=np.int64), 0)
@@ -150,22 +155,29 @@ class World:
 
     def step(self) -> None:
         idx = np.flatnonzero(self.alive)
+        ids_before = self.id[idx]
         last = dict(eaten=0.0, metabolic=0.0, movement=0.0, birth_cost=0.0,
                     death_removed=0.0, food_growth=0.0, births=0, deaths=0, births_blocked=0)
         last.update({k: 0.0 for k in _LEDGER_KEYS})
         last.update({k: 0.0 for k in _PRED_KEYS})
+        last["garden_cost"] = 0.0
 
         if idx.size:
             p = self.p
             nbr_start, nbr = K.neighbour_lists(idx, self.x, self.y, self.alive, p.world_size,
                                                self.nb, p.interaction_radius, self._buf)
             last.update(self._interact(idx, nbr_start, nbr))
-            kin, strangers = K.social_vectors(idx, self.x, self.y, self.alive, self.genome,
-                                              G.TAG.start, nbr_start, nbr, p.world_size)
+            if p.social_movement:
+                kin, strangers = K.social_vectors(idx, self.x, self.y, self.alive, self.genome,
+                                                  G.TAG.start, nbr_start, nbr, p.world_size)
+            else:
+                kin = strangers = np.zeros((idx.size, 2))
             live = self.alive[idx]  # fights may have killed some
             idx, kin, strangers = idx[live], kin[live], strangers[live]
             last["movement"] = self._move(idx, kin, strangers)
             last["eaten"] = self._eat(idx)
+            if p.garden_enabled:
+                last["garden_cost"] = self._garden(idx)
             if p.n_predators > 0:
                 last.update(self._predation(idx))
                 idx = idx[self.alive[idx]]
@@ -175,11 +187,15 @@ class World:
             last["births"], last["births_blocked"], last["birth_cost"] = self._reproduce()
             self.age[self.alive] += 1
 
+        if idx.size or ids_before.size:
+            gone = ids_before[~np.isin(ids_before, self.id[self.alive])]
+            self.genealogy.death[gone] = self.step_count
         last["food_growth"] = self._regrow()
         self.total_births += last["births"]
         self.total_deaths += last["deaths"]
         self.total_killed += int(last["killed"])
         self.total_predated += int(last["predated"])
+        self.total_sacrificed += int(last["sacrifices"])
         self.last = last
         self.step_count += 1
 
@@ -254,9 +270,29 @@ class World:
                    nbr_start, nbr, p.birth_threshold, p.share_cost, p.share_benefit,
                    p.attack_cost, p.predation_efficiency, u, self._buf, ledger,
                    self.species, p.n_species == 1 or p.fights_within_species,
-                   p.defense_enabled, G.DEFEND_W.start, self._slot_pos, seed)
+                   p.defense_enabled, G.DEFEND_W.start, self._slot_pos, seed, p.share_enabled,
+                   p.share_sees_self, p.share_sees_other, p.share_all)
+        n = int(self._log_n[0])
+        sh = self._log_kind[:n] == 1
+        gi, gj = self._log_i[:n][sh], self._log_j[:n][sh]
+        self.last_gifts = np.stack([self.x[gi], self.y[gi], self.x[gj], self.y[gj]], axis=1)
         self._record_events(idx)
         return {k: float(ledger[i]) for k, i in _LEDGER_KEYS.items()}
+
+    def _garden(self, idx: np.ndarray) -> float:
+        """Each agent invests garden_gene * garden_max energy into the fertility of its cell
+        (or of a random cell, in the control)."""
+        p, n = self.p, self.p.grid_cells
+        invest = np.clip(self.genome[idx, G.GARDEN], 0.0, 1.0) * p.garden_max
+        invest = np.minimum(invest, np.maximum(self.energy[idx], 0.0))
+        self.energy[idx] -= invest
+        if p.garden_to_random:
+            cell = self.rng.integers(n * n, size=idx.size)
+        else:
+            cx, cy = self.cell_of(idx)
+            cell = cx * n + cy
+        np.add.at(self.fertility.reshape(-1), cell, invest * p.garden_efficiency)
+        return float(invest.sum())
 
     def _predation(self, idx: np.ndarray) -> Dict[str, float]:
         p = self.p
@@ -304,7 +340,8 @@ class World:
         tdiff = self.genome[i][:, G.TAG] - self.genome[j][:, G.TAG]
         sim = 1.0 - np.linalg.norm(tdiff, axis=1) / np.sqrt(3.0)
         self.events.append(kind=kind, actor=self.id[i], target=self.id[j], d2=d2, sim=sim,
-                           actor_e=self.energy[i], target_e=self.energy[j])
+                           actor_e=self.energy[i], target_e=self.energy[j],
+                           step=np.full(i.size, self.step_count, dtype=np.int64))
 
     def _die(self, idx: np.ndarray):
         starved = self.energy[idx] <= 0
@@ -347,12 +384,16 @@ class World:
 
         # Genome: copy with gaussian mutation; the tag mutates at its own rate.
         g = self.genome[parents].copy()
+        old_harvest = g[:, G.HARVEST].copy()
         g += self.rng.normal(scale=p.mutation_sd, size=g.shape)
+        if p.freeze_harvest:
+            g[:, G.HARVEST] = old_harvest
         g[:, G.WEIGHT_GENES] += self.rng.normal(
             scale=np.sqrt(max(p.weight_mutation_sd ** 2 - p.mutation_sd ** 2, 0.0)),
             size=(k, G.WEIGHT_GENES.size))  # weights get weight_mutation_sd in total
         # Keep the gene itself in range so no hidden drift builds up past the limit.
         g[:, G.HARVEST] = np.clip(g[:, G.HARVEST], p.harvest_min, p.harvest_max)
+        g[:, G.GARDEN] = np.clip(g[:, G.GARDEN], 0.0, 1.0)
         g[:, G.WEIGHT_GENES] = np.clip(g[:, G.WEIGHT_GENES], -p.weight_clip, p.weight_clip)
         g[:, G.TAG] = np.clip(
             self.genome[parents][:, G.TAG] + self.rng.normal(scale=p.tag_mutation_sd, size=(k, 3)), 0.0, 1.0
@@ -381,7 +422,12 @@ class World:
         before = self.food.sum()
         f = self.food
         s = self.season_factor()
-        f += s * (p.food_growth * f * (1.0 - f / p.food_capacity) + p.food_inflow)
+        if p.garden_enabled:
+            f += s * (p.food_growth * (1.0 + self.fertility) * f * (1.0 - f / p.food_capacity)
+                      + p.food_inflow)
+            self.fertility *= 1.0 - p.fertility_decay
+        else:
+            f += s * (p.food_growth * f * (1.0 - f / p.food_capacity) + p.food_inflow)
         np.clip(f, 0.0, p.food_capacity, out=f)
         return float(self.food.sum() - before)
 
@@ -413,6 +459,7 @@ class World:
             "total_killed": self.total_killed,
             "total_starved": self.total_starved,
             "total_predated": self.total_predated,
+            "total_sacrificed": self.total_sacrificed,
             "season": self.season_factor(),
         }
         # Behaviour actually shown in the last step (per encounter), and who it was aimed at.
@@ -436,6 +483,9 @@ class World:
         out["alarm_rate"] = L["alarms"] / det if det else nan  # calls per detection
         out["sim_warned"] = L["sim_warned"] / L["warned"] if L.get("warned") else nan
         out["predated"] = L.get("predated", 0.0)
+        died = (L.get("deaths", 0) + L.get("killed", 0.0) + L.get("predated", 0.0)
+                + L.get("sacrifices", 0.0))
+        out["sacrifice_frac"] = L.get("sacrifices", 0.0) / died if died else nan  # of this step's deaths
         out["sim_random"] = self.random_pair_similarity()
         out["assortment"] = out["sim_encounter"] - out["sim_random"]
         if a.any():

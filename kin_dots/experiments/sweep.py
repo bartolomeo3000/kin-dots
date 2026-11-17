@@ -56,12 +56,15 @@ def run_one(job):
     if w.p.season_period > 0:  # report at the same season phase every time
         every = max(w.p.season_period, every // w.p.season_period * w.p.season_period)
     rows, acc, deaths0, pred0 = [], {}, (0, 0, 0), 0
+    pop_sum, pop_n = 0.0, 0
     price = None
     for s in range(1, steps + 1):
         if s % every == (every - PRICE_WINDOW) % every and w.population > 0:
             price = PriceTracker(w)
         w.step()
         c = w.census()
+        pop_sum += c["population"]
+        pop_n += 1
         for k in RATE_KEYS:
             if c[k] == c[k]:
                 acc.setdefault(k, []).append(c[k])
@@ -78,15 +81,21 @@ def run_one(job):
                     row.update(price.finish(w))
                     price = None
             row["predated_win"] = c["total_predated"] - pred0
+            row["pop_mean_win"] = pop_sum / max(pop_n, 1)
+            pop_sum, pop_n = 0.0, 0
             deaths0, acc, pred0 = d, {}, c["total_predated"]
             rows.append(row)
         if w.population == 0:
             break
+    if not rows or rows[-1]["step"] != w.step_count:  # run shorter than a window: keep the end state
+        rows.append(dict(w.census(), starved_win=0, old_win=0, killed_win=0, predated_win=0,
+                         pop_mean_win=pop_sum / max(pop_n, 1)))
     if out_dir:
         path = Path(out_dir) / f"{name}_seed{seed}.csv"
         path.parent.mkdir(parents=True, exist_ok=True)
         with open(path, "w", newline="") as f:
-            wr = csv.DictWriter(f, fieldnames=list(rows[-1].keys()))
+            fields = list(dict.fromkeys(k for r in rows for k in r))  # union, first-seen order
+            wr = csv.DictWriter(f, fieldnames=fields)
             wr.writeheader()
             wr.writerows(rows)
     return name, seed, rows
@@ -94,16 +103,30 @@ def run_one(job):
 
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--cond", nargs="+", action="append", required=True, metavar="NAME [KEY=VAL ...]")
+    ap.add_argument("--cond", nargs="+", action="append", default=[], metavar="NAME [KEY=VAL ...]")
+    ap.add_argument("--cond-config", nargs="+", action="append", default=[],
+                    metavar="NAME CONFIG.yaml [KEY=VAL ...]",
+                    help="a condition from a preset file, optionally with extra overrides")
     ap.add_argument("--seeds", type=int, nargs="+", default=[0])
     ap.add_argument("--steps", type=int, default=20000)
     ap.add_argument("--windows", type=int, default=5, help="number of reporting windows")
     ap.add_argument("--procs", type=int, default=max(1, (os.cpu_count() or 2) - 2))
     ap.add_argument("--out", type=Path, help="directory for per-run CSVs")
+    ap.add_argument("--show", help="comma-separated columns to print instead of --table")
+    ap.add_argument("--summary", action="store_true",
+                    help="only print one line per condition: last-window mean over seeds [min..max]")
     ap.add_argument("--table", choices=("behaviour", "kin", "pred", "species", "both"), default="both",
                     help="which summary table(s) to print")
     args = ap.parse_args(argv)
 
+    if not args.cond and not args.cond_config:
+        ap.error("give at least one --cond or --cond-config")
+    for cc in args.cond_config:
+        name, path, extra = cc[0], cc[1], cc[2:]
+        import yaml
+        with open(path) as f:
+            d = yaml.safe_load(f) or {}
+        args.cond.append([name] + [f"{k}={v!r}" for k, v in d.items()] + extra)
     jobs = []
     for cond in args.cond:
         name, kvs = cond[0], [t for kv in cond[1:] for t in kv.split()]
@@ -131,8 +154,31 @@ def main(argv=None) -> int:
             vals = " ".join(f"{float(r.get(k, float('nan'))):11.3f}" for k in cols)
             print(f"{r['step']:7d} {vals}" + extra[1](r))
 
+    cols = tuple(c.strip() for c in args.show.split(",")) if args.show else None
+    if args.summary:
+        by = {}
+        for name, seed, rows in results:
+            by.setdefault(name, []).append(rows[-1] if rows else {})
+        cols = cols or SHOW
+        width = max(len(n) for n in by) + 2
+        print(" " * width + "  ".join(f"{c[-18:]:>24}" for c in cols) + "   extinct")
+        for name, lasts in by.items():
+            cells = []
+            for c in cols:
+                v = np.array([float(r.get(c, float("nan"))) for r in lasts])
+                v = v[~np.isnan(v)]
+                cells.append(f"{v.mean():8.3f} [{v.min():6.2f}..{v.max():6.2f}]" if v.size else f"{'nan':>24}")
+            ext = sum(1 for r in lasts if not r or r.get("population", 0) == 0)
+            print(f"{name:<{width}}" + "  ".join(f"{c:>24}" for c in cells) + f"   {ext}/{len(lasts)}")
+        return 0
+
     for name, seed, rows in results:
         print(f"== {name}  seed {seed}")
+        if cols:
+            table(cols, ("", lambda r: ""))
+            if rows and rows[-1]["population"] == 0:
+                print("   EXTINCT")
+            continue
         if args.table in ("behaviour", "both"):
             table(SHOW, ("  starv/old/kill", lambda r: f"  {r['starved_win']}/{r['old_win']}/{r['killed_win']}"))
         if args.table in ("kin", "both"):

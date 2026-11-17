@@ -259,3 +259,35 @@ Presety: `configs/kin_alarm.yaml`, `configs/kin_alarm_random_warn.yaml`.
   - porównanie obrony przy walkach z obcymi i z własnymi.
 
 Presety: `configs/two_species.yaml`, `configs/two_species_fights_within.yaml`.
+
+### Szukanie prostego demo (2026-11-17/18)
+
+Cel: altruizm z jak najprostszego zestawu reguł, bez reguł, które go „zakładają”. Dużo krótkich przesiewów (`results/minshare*`, `robust1`, `garden1`, `sacrifice1`, `fromzero*`, `rare`, `demo_curves`).
+
+**Porzucone:**
+- **Powściągliwość w jedzeniu** (jeden gen: jaką część trawy zjadam). Wolne kropki jedzą oszczędniej, ale tak samo przy potomstwie rozrzuconym po mapie (0.30 vs 0.34). To egoizm (sam korzystam z oszczędzonej trawy), nie altruizm. Pierwsza wersja miała też błąd projektu: każda wartość > 5% wyjadała komórkę do zera.
+- **Ogrodnicy** (energia na nawożenie trawy, dobro wspólne). Gen spada we wszystkich warunkach, bez różnicy względem kontroli.
+
+**Uproszczone dzielenie się po 1 jednostce** (kolorów nie widać, decyzja zna tylko własną energię):
+- Ewoluuje „oddaj, gdy masz mało”: 7.5% spotkań (3/3). Kontrola z losowym biorcą: 1.2% (3/3). Decyzja bez wejścia energii: 1.6%.
+- 86% darów pochodzi od kropek, które umierają w ciągu 50 kroków (w populacji ogółem 63%).
+- Odporność (18k kroków): efekt słabnie przy łagodnych lub krótkich zimach, szybszym ruchu, dalszym rozproszeniu potomstwa i braku starzenia. Strata 50% przy przekazaniu nadal daje 2.7%.
+- Startując od ~0, przebiegi były niejednoznaczne (wymierania w pierwszej zimie).
+
+**Poświęcenie** (`share_all`: kropka oddaje całą energię sąsiadowi i umiera). To jest główne demo, opisane w [DEMO.md](DEMO.md):
+- Start z `a = −9` (~5% śmierci to poświęcenia). Po 30k kroków **~70%** (3/3). Kontrola z darem dla obcego: 5–10% (3/3).
+- Samobójstwo bez daru: 61% / 44% / 6%, więc liczy się dar.
+- Reguła przechodzi od „poświęcają się najedzeni” do „poświęcają się słabi” (`b` ≈ −3.5).
+- W kontroli populacja ma cykl dwuletni (krach co drugi rok). W świecie z poświęceniem ten cykl wygasa.
+
+Nowe narzędzia:
+- `kin_dots/viz/compare.py`: dwa światy obok siebie.
+- `analysis/plot_sacrifice.py`: wykres do demo.
+- `sweep`:
+  - `--cond-config` (warunek wprost z pliku presetu),
+  - `--show` (wybór kolumn),
+  - `--summary` (jedna linia na warunek),
+  - `pop_mean_win` (średnia populacja z okna).
+- Metryki:
+  - `dies_soon_*`: czy dawca umiera w ciągu 50 kroków,
+  - `sacrifice_frac`: jaki odsetek śmierci to poświęcenia.

@@ -20,10 +20,12 @@ ALARM_W = slice(12, 16)
 # Defending a neighbour attacked by another species (taking the fight on oneself):
 # p = sigmoid(w0 + w1*tag similarity to the victim + w2*my_energy + w3*attacker's energy)
 DEFEND_W = slice(16, 20)
+# Gardening: fraction of garden_max energy invested each step to fertilise the cell below
+GARDEN = 20
 # Heritable colour tag (RGB in [0, 1]), mutated independently of behaviour
-TAG = slice(20, 23)
+TAG = slice(21, 24)
 
-N_GENES = 23
+N_GENES = 24
 
 GENE_NAMES = (
     [f"share_w{i}" for i in range(4)]
@@ -31,6 +33,7 @@ GENE_NAMES = (
     + ["harvest", "move_food", "move_kin", "move_stranger"]
     + [f"alarm_w{i}" for i in range(4)]
     + [f"defend_w{i}" for i in range(4)]
+    + ["garden"]
     + ["tag_r", "tag_g", "tag_b"]
 )
 assert len(GENE_NAMES) == N_GENES
@@ -53,7 +56,8 @@ def propensity(g: np.ndarray, which: slice, sim: float = 1.0,
     return 1.0 / (1.0 + np.exp(-z))
 
 
-def founder_genomes(n: int, rng: np.random.Generator, weight_sd: float = 0.0) -> np.ndarray:
+def founder_genomes(n: int, rng: np.random.Generator, weight_sd: float = 0.0,
+                    harvest: float = 0.5, garden: float = 0.0, share_bias: float = -2.0) -> np.ndarray:
     """Initial population: rare sharing and attacking, some standing variation in the
     weights (so selection has something to act on), and a random colour tag each.
 
@@ -61,11 +65,12 @@ def founder_genomes(n: int, rng: np.random.Generator, weight_sd: float = 0.0) ->
     (e.g. -5) leaves selection almost no signal on the other weights.
     """
     g = np.zeros((n, N_GENES))
-    g[:, SHARE_W] = [-2.0, 0.0, 0.0, 0.0]   # p(share) ~ 12% per encounter
+    g[:, SHARE_W] = [share_bias, 0.0, 0.0, 0.0]   # default -2: p(share) ~ 12% per encounter
     g[:, ATTACK_W] = [-3.0, 0.0, 0.0, 0.0]  # p(attack) ~ 5% per encounter
     g[:, ALARM_W] = [-2.0, 0.0, 0.0, 0.0]   # p(alarm | predator detected) ~ 12%
     g[:, DEFEND_W] = [-3.0, 0.0, 0.0, 0.0]  # p(defend a neighbour) ~ 5% per candidate
-    g[:, HARVEST] = 0.5
+    g[:, HARVEST] = harvest
+    g[:, GARDEN] = garden
     g[:, MOVE_FOOD] = 1.0
     if weight_sd > 0:
         g[:, WEIGHT_GENES] += rng.normal(scale=weight_sd, size=(n, WEIGHT_GENES.size))

@@ -41,6 +41,12 @@ class Params:
     max_age: int = 300             # death by old age (keeps generations short); 0 disables
 
     # --- interactions (M2) ---
+    share_enabled: bool = True          # False: nobody can donate energy
+    share_all: bool = False             # True: "sacrifice" - the donor gives ALL its energy
+                                        # (recipient gets share_benefit/share_cost of it) and dies
+    share_sees_self: bool = True        # sharing decision may use the donor's own energy
+    share_sees_other: bool = True       # ...and the recipient's energy
+    social_movement: bool = True        # False: movement ignores neighbours (kin/stranger genes unused)
     interaction_radius: float = 4.0     # neighbours within this distance can be met / sensed
     share_cost: float = 1.0             # energy a donor pays
     share_benefit: float = 0.9          # energy the recipient gets. Keep <= share_cost: with
@@ -55,6 +61,14 @@ class Params:
     share_to_random: bool = False       # control: the recipient is a random agent from the whole
                                         # map instead of the neighbour met (same ecology, no kinship)
     weight_clip: float = 10.0           # decision/movement weights are kept in [-clip, clip]
+
+    # --- gardening (a public good) ---
+    garden_enabled: bool = False        # agents may spend energy to fertilise the cell below them
+    garden_max: float = 0.05            # energy per step at garden gene = 1
+    garden_efficiency: float = 1.0      # fertility added per unit of energy
+    fertility_decay: float = 0.02       # fertility fades by this fraction per step
+    garden_to_random: bool = False      # control: the fertiliser lands on a random cell of the map
+    founder_garden: float = 0.2         # initial value of the garden gene (in [0, 1])
 
     # --- species (two competing species) ---
     n_species: int = 1                  # 2: agents carry an inherited, never-mutating species label
@@ -91,6 +105,9 @@ class Params:
     # --- mutation ---
     mutation_sd: float = 0.05      # gaussian mutation of non-weight genes (harvest)
     weight_mutation_sd: float = 0.15  # gaussian mutation of decision/movement weights
+    founder_harvest: float = 0.5      # initial value of the harvest gene
+    founder_share_bias: float = -2.0  # initial share_w0 (p(share) = sigmoid of it, before inputs)
+    freeze_harvest: bool = False      # True: the harvest gene never mutates
     founder_weight_sd: float = 0.5    # standing variation of weights in the founding population
     tag_mutation_sd: float = 0.02  # gaussian mutation of the colour tag (kept separate on purpose)
 

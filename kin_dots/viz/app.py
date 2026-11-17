@@ -11,6 +11,7 @@ Keys:
 Predators (if enabled) are red triangles; agents that called an alarm this step
 get a white ring. With two species, species 0 is drawn as dots and species 1 as squares.
     F            show / hide the food layer
+    G            show / hide energy gifts (white line from donor to recipient, last step)
     R            restart with the same seed
     N            restart with the next seed
     ESC / Q      quit
@@ -82,6 +83,7 @@ class Viewer:
         self.steps_per_frame = 1
         self.color_mode = 0
         self.show_food = True
+        self.show_gifts = True
         self.reset(params.seed)
 
     def reset(self, seed: int) -> None:
@@ -131,6 +133,8 @@ class Viewer:
                 self.color_mode = (self.color_mode + 1) % len(COLOR_MODES)
             elif k == pygame.K_f:
                 self.show_food = not self.show_food
+            elif k == pygame.K_g:
+                self.show_gifts = not self.show_gifts
             elif k == pygame.K_r:
                 self.reset(self.params.seed)
             elif k == pygame.K_n:
@@ -206,6 +210,12 @@ class Viewer:
                 rect(self.screen, c, (x - 2, y - 2, 5, 5))
             else:
                 circle(self.screen, c, (x, y), 2)
+        if self.show_gifts and len(w.last_gifts):
+            half = w.p.world_size / 2
+            for xa, ya, xb, yb in w.last_gifts.tolist():
+                if abs(xa - xb) < half and abs(ya - yb) < half:  # skip gifts across the torus edge
+                    pygame.draw.line(self.screen, (255, 255, 255), (int(xa * scale), int(ya * scale)),
+                                     (int(xb * scale), int(yb * scale)), 1)
         callers = idx[w.caller[idx] == 1]
         for x, y in zip((w.x[callers] * scale).astype(int).tolist(), (w.y[callers] * scale).astype(int).tolist()):
             circle(self.screen, (255, 255, 255), (x, y), 6, 1)

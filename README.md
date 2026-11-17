@@ -4,7 +4,7 @@ Ewolucyjna symulacja kropek-agentów, które jedzą, walczą, rozmnażają się 
 
 Szczegóły modelu, metryki, eksperymenty i kamienie milowe: [PLAN.md](PLAN.md).
 
-**Status:** M3 gotowy, dodane drapieżniki i krzyk ostrzegawczy. Dzielenie się z krewnymi i powściągliwość wobec krewnych ewoluują, a ich źródłem jest pokrewieństwo (kontrole). Krzyk ostrzegawczy: wynik niejednoznaczny. Szczegóły: sekcja 8 w [PLAN.md](PLAN.md). Nowy wariant: dwa gatunki z frontem, walką tylko z obcymi i obroną krewnych.
+**Najlepsze demo: [DEMO.md](DEMO.md).** Kropki z genomem złożonym z dwóch liczb ewoluują od ~5% do ~70% śmierci przez poświęcenie za sąsiada, a w kontroli (dar dla obcego) nie. **Status:** M3 gotowy, dodane drapieżniki i krzyk ostrzegawczy. Dzielenie się z krewnymi i powściągliwość wobec krewnych ewoluują, a ich źródłem jest pokrewieństwo (kontrole). Krzyk ostrzegawczy: wynik niejednoznaczny. Szczegóły: sekcja 8 w [PLAN.md](PLAN.md). Nowy wariant: dwa gatunki z frontem, walką tylko z obcymi i obroną krewnych.
 
 ## Instalacja
 
@@ -44,6 +44,13 @@ Gotowe presety w `configs/` (opis w sekcji 8 w [PLAN.md](PLAN.md)):
 
 ```bash
 .venv/bin/python -m kin_dots.viz.app --config configs/kin_altruism.yaml --speed 16
+```
+
+Dwa światy obok siebie (ten sam start, różnią się jedną regułą), z wspólnym wykresem całego przebiegu:
+
+```bash
+.venv/bin/python -m kin_dots.viz.compare --left configs/kin_altruism.yaml --right configs/kin_altruism_random_recipient.yaml \
+  --left-label "pomoc sąsiadowi" --right-label "pomoc losowej kropce" --metric share_rate --speed 16
 ```
 
 Porównanie wielu warunków i ziaren naraz (równolegle; `--table kin` pokazuje metryki pokrewieństwa, `--table behaviour` geny i zachowanie, `--table pred` drapieżniki i krzyk, `--table species` gatunki i obrona):

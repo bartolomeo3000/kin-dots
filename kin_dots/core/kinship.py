@@ -39,6 +39,37 @@ from .genealogy import (EV_ALARM, EV_ATTACK, EV_DEFEND, EV_MET, EV_RANDOM, EV_SH
                         mrca_pair)
 
 MAX_PAIRS_FOR_GENEALOGY = 3000  # sample size for the (slower) genealogical distances
+FATE_HORIZON = 50               # "dies soon" = dies within this many steps after the act
+FATE_SAMPLE = 400               # acts sampled per report for the fate statistics
+
+
+def _fate(world, ev, rng) -> Dict[str, float]:
+    """Do donors die soon after donating, more than agents in general?
+
+    Samples (actor, step) of donations and of ordinary encounters ('met', the
+    baseline) are kept on the world between reports; once HORIZON steps have
+    passed, each sample is resolved as died-within-horizon or not.
+    """
+    store = world.__dict__.setdefault("_fate_samples", {"share": [], "met": []})
+    for name, k in (("share", EV_SHARE), ("met", EV_MET)):
+        m = np.flatnonzero(ev["kind"] == k)
+        if m.size > FATE_SAMPLE:
+            m = rng.choice(m, FATE_SAMPLE, replace=False)
+        store[name].append(np.stack([ev["actor"][m], ev["step"][m]], axis=1))
+    out: Dict[str, float] = {}
+    death = world.genealogy.death
+    now = world.step_count
+    for name, chunks in store.items():
+        allv = np.concatenate(chunks) if chunks else np.zeros((0, 2), np.int64)
+        ripe = allv[:, 1] <= now - FATE_HORIZON
+        res = allv[ripe]
+        store[name] = [allv[~ripe]]
+        if res.size == 0:
+            out[f"dies_soon_{name}"] = float("nan")
+            continue
+        d = death[res[:, 0]]
+        out[f"dies_soon_{name}"] = float(np.mean((d >= 0) & (d - res[:, 1] <= FATE_HORIZON)))
+    return out
 
 
 def kinship_report(world, events: Dict[str, np.ndarray] = None) -> Dict[str, float]:
@@ -74,6 +105,7 @@ def kinship_report(world, events: Dict[str, np.ndarray] = None) -> Dict[str, flo
             out["share_to_child"] = float(np.mean(gen.parent[t] == a))
             out["share_to_parent"] = float(np.mean(gen.parent[a] == t))
 
+    out.update(_fate(world, ev, r))
     p = world.p
     out["hamilton_rb"] = out["r_share"] * p.share_benefit if out["n_share"] else nan
     out["hamilton_c"] = p.share_cost
