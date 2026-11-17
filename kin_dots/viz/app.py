@@ -26,6 +26,7 @@ import pygame  # noqa: E402
 
 from kin_dots.core import Params, World  # noqa: E402
 from kin_dots.core import genome as G  # noqa: E402
+from kin_dots.core.kinship import kinship_report  # noqa: E402
 
 VIEW = 800          # world view is VIEW x VIEW pixels
 PANEL = 340         # side panel width
@@ -39,6 +40,7 @@ GREEN = (90, 190, 110)
 COLOR_MODES = ("tag", "p(share|kin)", "p(attack|stranger)", "harvest", "energy")
 HISTORY = 600       # samples kept for the side-panel plots
 SMOOTH = 0.03       # exponential smoothing of the noisy per-step rates
+KIN_EVERY = 100     # steps between genetic-relatedness measurements
 
 # Reference situation used to show an agent's propensities as one number:
 # both agents at half the birth threshold; "kin" = identical tag, "stranger" = similarity 0.5.
@@ -58,8 +60,7 @@ def _ramp(t: np.ndarray) -> np.ndarray:
 
 
 def propensity(genome: np.ndarray, which: slice, sim: float) -> np.ndarray:
-    w = genome[:, which]
-    return _sigmoid(w[:, 0] + w[:, 1] * sim + (w[:, 2] + w[:, 3]) * _REF_E)
+    return G.propensity(genome, which, sim, _REF_E, _REF_E)
 
 
 class Viewer:
@@ -79,8 +80,9 @@ class Viewer:
     def reset(self, seed: int) -> None:
         self.params = self.params.replace(seed=seed)
         self.world = World(self.params)
-        keys = ("population", "share_rate", "attack_rate", "sim_encounter", "sim_share")
+        keys = ("population", "share_rate", "attack_rate", "sim_encounter", "sim_share", "sim_attack")
         self.hist = {k: deque(maxlen=HISTORY) for k in keys}
+        self.kin_hist = {k: deque(maxlen=HISTORY // 4) for k in ("r_met", "r_share", "r_attack")}
         self.smooth = {}
         self._record()
 
@@ -132,6 +134,11 @@ class Viewer:
                 break
             self.world.step()
             self._record()
+            if self.world.step_count % KIN_EVERY == 0 and self.world.population > 1:
+                rep = kinship_report(self.world)
+                for k, d in self.kin_hist.items():
+                    v = rep.get(k, float("nan"))
+                    d.append(v if v == v else (d[-1] if d else 0.0))
 
     # ---------------------------------------------------------------- drawing
 
@@ -182,7 +189,7 @@ class Viewer:
     def _text(self, s: str, x: int, y: int, color=FG) -> None:
         self.screen.blit(self.font.render(s, True, color), (x, y))
 
-    def _plot(self, x: int, y: int, w: int, h: int, series, fixed=None) -> None:
+    def _plot(self, x: int, y: int, w: int, h: int, series, fixed=None, n_max=HISTORY) -> None:
         """series: list of (label, deque, colour). fixed: (lo, hi) or None for auto range."""
         pygame.draw.rect(self.screen, (40, 40, 48), (x, y, w, h), 1)
         lx = x + 4
@@ -198,7 +205,7 @@ class Viewer:
         for _, d, col in series:
             if len(d) < 2:
                 continue
-            pts = [(x + int(i * (w - 1) / (HISTORY - 1)),
+            pts = [(x + int(i * (w - 1) / (n_max - 1)),
                     y + h - 2 - int((min(max(v, lo), hi) - lo) / span * (h - 22)))
                    for i, v in enumerate(d)]
             pygame.draw.lines(self.screen, col, False, pts, 1)
@@ -229,13 +236,18 @@ class Viewer:
             self._text(s, x0, 12 + i * 18)
 
         y = 12 + len(lines) * 18 + 6
-        pw, ph = PANEL - 32, 120
+        pw, ph = PANEL - 32, 100
         h = self.hist
         self._plot(x0, y, pw, ph, [("population", h["population"], BLUE)])
         self._plot(x0, y + ph + 8, pw, ph,
                    [("share", h["share_rate"], YELLOW), ("attack", h["attack_rate"], RED)])
         self._plot(x0, y + 2 * (ph + 8), pw, ph,
-                   [("sim met", h["sim_encounter"], MUTED), ("sim helped", h["sim_share"], GREEN)])
+                   [("met", h["sim_encounter"], MUTED), ("helped", h["sim_share"], GREEN),
+                    ("attacked", h["sim_attack"], RED)])
+        k = self.kin_hist
+        self._plot(x0, y + 3 * (ph + 8), pw, ph,
+                   [("r met", k["r_met"], MUTED), ("helped", k["r_share"], GREEN),
+                    ("attacked", k["r_attack"], RED)], n_max=HISTORY // 4)
 
         help_lines = ["SPACE pause  RIGHT step", "UP/DOWN speed  C colour", "F food  R restart  N new seed"]
         for i, s in enumerate(help_lines):

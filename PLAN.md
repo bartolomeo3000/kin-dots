@@ -161,3 +161,40 @@ Kropki z małą szansą na przeżycie chudej pory oddają energię krewnym, któ
 **Znane problemy:**
 - Kontrola z potomstwem rozrzuconym po mapie (`dispersal_sd < 0`) **wymiera** w warunku `kin_altruism` (bez walk, z porami roku), także przy `move_speed` 0.3. Potomstwo ląduje na jałowych obszarach i ginie w pierwszej chudej porze. Dlatego czystą kontrolą jest losowy biorca, a nie globalne rozproszenie.
 - Przy `move_speed` 0.1 łaty jedzenia długo stoją puste, bo kropki nie nadążają ich zasiedlać.
+
+### M3: prawdziwe pokrewieństwo (2026-11-17)
+
+Nowe pomiary (`kin_dots/core/genealogy.py`, `kin_dots/core/kinship.py`):
+- **Drzewo genealogiczne:** rodzic, pokolenie i krok narodzin każdej kropki.
+- **Dziennik interakcji:** kto spotkał, wspomógł albo zaatakował kogo, plus losowe pary jako punkt odniesienia.
+- **`r`:** pokrewieństwo genetyczne na genach zachowania (bez koloru). 1 oznacza klony, 0 losową parę.
+- **Bliskość w drzewie:** pokolenia do wspólnego przodka.
+- **Komu się pomaga:** odsetek pomocy dla własnych dzieci i rodziców.
+- **Reguła Hamiltona** w jednostkach energii.
+- **Równanie Price'a** dla każdego genu (okno 600 kroków, czyli jedna pora roku).
+- **Klany i oszuści:** klan to grupa sąsiadów, którzy są bliskimi krewnymi (odległość w drzewie ≤ 4).
+
+Pomiary nie zmieniają przebiegu symulacji (osobny generator losowy, sprawdzone testem). Kosztują ~19% czasu kroku.
+
+Wyniki (40k kroków, 2 ziarna na warunek, okna co 8000 kroków; `results/m3/`):
+
+| | `kin_altruism` | `kin_restraint` | losowy biorca |
+|---|---|---|---|
+| `r` spotykanych sąsiadów | 0.61–0.87 | 0.69–0.85 | 0.82–0.92 |
+| `r` wspomaganych | **0.75–0.88, w 10/10 oknach > spotykani** (w pierwszym oknie minimalnie) | — | **≈ 0** (−0.16…0.05) |
+| bliscy krewni (≤4) wśród wspomaganych vs spotykanych | **0.46–0.70 vs 0.30–0.66** (wyżej w 8/10 oknach) | — | ~0 vs 0.40–0.86 |
+| pomoc dla własnego dziecka | ~15% | — | 0% |
+| `r` atakowanych | — | **0.52–0.81, w 10/10 oknach < spotykani** | — |
+| `r·b − c` (energia) | **−0.20 … −0.33** | | −1 |
+| selekcja na `share_w1` (Price) | **dodatnia w 10/10 oknach** (0.03–0.34) | zmienna | zmienna |
+
+**Wnioski:**
+- **Pomoc trafia do krewnych bardziej, niż wynikałoby z samego sąsiedztwa.** `r` i odsetek bliskich krewnych są wyższe u wspomaganych niż u przypadkowo spotkanych. Tylko ~15% pomocy to opieka nad własnym dzieckiem. Reszta trafia do rodzeństwa, kuzynów i innych krewnych, więc to nie jest zwykła opieka rodzicielska.
+- **Powściągliwość wobec krewnych potwierdzona genealogicznie:** atakowani są w każdym oknie mniej spokrewnieni niż spotykani.
+- **Selekcja (Price) w każdym oknie pcha w górę wagę „dziel się z podobnym” (`share_w1`).** Bias ogólnej szczodrości (`share_w0`) jest zwykle pchany w dół. Ewoluuje więc pomaganie *wybiórcze*, nie ogólna szczodrość.
+- **Naiwna reguła Hamiltona w jednostkach energii mówi „nie opłaca się”** (`r·b − c < 0`), a dzielenie się i tak jest selekcjonowane. Prawdziwe `b` i `c` trzeba liczyć w potomstwie, nie w energii. Energia oddana przez kropkę, która i tak umrze z głodu, kosztuje ją prawie nic (zob. `share_w2 < 0`).
+- **Oszustów prawie nie ma** (0–3% członków klanów). Cykle „klan → oszuści → upadek” jeszcze się nie pojawiły. Możliwe, że wymagają dłuższych przebiegów albo silniejszego altruizmu.
+
+**Do zrobienia później:**
+- Regresja Queller/Grafen: `b` i `c` w jednostkach fitnessu (liczba potomków w następnym oknie w zależności od energii oddanej i otrzymanej).
+- Liczba klanów mocno zależy od pory roku (od 0 do ~600). `sweep` wyrównuje teraz okna raportów do wielokrotności okresu pór roku. Powyższa tabela powstała jeszcze bez tego wyrównania, dlatego klanów w niej nie ma.

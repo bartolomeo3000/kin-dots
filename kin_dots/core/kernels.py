@@ -171,7 +171,7 @@ def social_vectors(idx, x, y, alive, genome, tag0, nbr_start, nbr, world_size):
 
 @njit(cache=True)
 def interact(acting_k, idx, energy, alive, genome, share0, attack0, tag0, tag_blind_share, attacks_enabled,
-             share_to_random,
+             share_to_random, log_i, log_j, log_kind, log_n,
              nbr_start, nbr, energy_scale, share_cost, share_benefit, attack_cost,
              predation_efficiency, u, buf, ledger):
     """Agents meet one random living neighbour each and may attack it or donate energy.
@@ -186,6 +186,8 @@ def interact(acting_k, idx, energy, alive, genome, share0, attack0, tag0, tag_bl
     u: (len(acting_k), 5) uniforms for [pick neighbour, attack?, share?, fight outcome, random recipient].
     share_to_random: the sharing decision and transfer use a random living agent from
     idx instead of the neighbour (control without kin structure).
+    Every encounter is logged as (i, j, kind) into log_i/log_j/log_kind (capacity
+    >= 2 * len(acting_k)); kind 0 = met, 1 = share, 2 = attack. log_n[0] = count.
     """
     for m in range(acting_k.size):
         k = acting_k[m]
@@ -205,12 +207,22 @@ def interact(acting_k, idx, energy, alive, genome, share0, attack0, tag0, tag_bl
         ej = min(energy[j] / energy_scale, 2.0)  # saturate the decision
         ledger[L_ENCOUNTERS] += 1
         ledger[L_SIM_ENCOUNTER] += sim
+        n = log_n[0]
+        log_i[n] = i
+        log_j[n] = j
+        log_kind[n] = 0
+        log_n[0] = n + 1
 
         z_att = (genome[i, attack0] + genome[i, attack0 + 1] * sim
                  + genome[i, attack0 + 2] * ei + genome[i, attack0 + 3] * ej)
         if attacks_enabled and u[m, 1] < _sigmoid(z_att):
             ledger[L_ATTACKS] += 1
             ledger[L_SIM_ATTACK] += sim
+            n = log_n[0]
+            log_i[n] = i
+            log_j[n] = j
+            log_kind[n] = 2
+            log_n[0] = n + 1
             energy[i] -= attack_cost
             ledger[L_ATTACK_COST] += attack_cost
             ea = max(energy[i], 0.0)
@@ -243,6 +255,11 @@ def interact(acting_k, idx, energy, alive, genome, share0, attack0, tag0, tag_bl
         if energy[i] > share_cost and u[m, 2] < _sigmoid(z_sh):
             ledger[L_DONOR_E] += energy[i]
             ledger[L_RECIPIENT_E] += energy[j]
+            n = log_n[0]
+            log_i[n] = i
+            log_j[n] = j
+            log_kind[n] = 1
+            log_n[0] = n + 1
             energy[i] -= share_cost
             energy[j] += share_benefit
             ledger[L_SHARES] += 1

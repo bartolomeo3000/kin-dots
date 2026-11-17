@@ -27,8 +27,20 @@ GENE_NAMES = (
 assert len(GENE_NAMES) == N_GENES
 
 
+# Everything except the tag: the genes that shape behaviour (used for genetic relatedness).
+BEHAVIOUR_GENES = np.arange(0, 12)
+
 # Genes that are decision/movement weights (clipped to [-weight_clip, weight_clip]).
 WEIGHT_GENES = np.r_[0:8, MOVE_FOOD, MOVE_KIN, MOVE_STRANGER]
+
+
+def propensity(g: np.ndarray, which: slice, sim: float = 1.0,
+               e_self: float = 0.5, e_other: float = 0.5) -> np.ndarray:
+    """Probability of sharing (which=SHARE_W) or attacking (ATTACK_W) in a reference
+    situation: given tag similarity and both energies (as fractions of birth_threshold)."""
+    w = g[:, which]
+    z = w[:, 0] + w[:, 1] * sim + w[:, 2] * e_self + w[:, 3] * e_other
+    return 1.0 / (1.0 + np.exp(-z))
 
 
 def founder_genomes(n: int, rng: np.random.Generator, weight_sd: float = 0.0) -> np.ndarray:

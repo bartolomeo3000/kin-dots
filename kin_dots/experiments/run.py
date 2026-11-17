@@ -13,6 +13,7 @@ import time
 from pathlib import Path
 
 from kin_dots.core import Params, World
+from kin_dots.core.kinship import clans_and_cheaters, kinship_report
 
 
 def main(argv=None) -> int:
@@ -36,6 +37,9 @@ def main(argv=None) -> int:
         world.step()
         if world.step_count % args.every == 0:
             row = world.census()
+            if world.population > 0:
+                row.update(kinship_report(world))
+                row.update(clans_and_cheaters(world))
             rows.append(row)
             if not args.quiet:
                 print(f"step {row['step']:>7}  pop {row['population']:>6}  "

@@ -4,7 +4,7 @@ Ewolucyjna symulacja kropek-agentów, które jedzą, walczą, rozmnażają się 
 
 Szczegóły modelu, metryki, eksperymenty i kamienie milowe: [PLAN.md](PLAN.md).
 
-**Status:** M2 gotowy, model poprawiony. Dzielenie się z krewnymi ewoluuje w presecie `kin_altruism` i znika w kontroli z biorcą losowanym z całej mapy. Wyniki i wnioski: sekcja 8 w [PLAN.md](PLAN.md).
+**Status:** M3 gotowy: genealogia, pokrewieństwo genetyczne, reguła Hamiltona, równanie Price'a, klany. Pomoc trafia do krewnych bardziej, niż wynika z samego sąsiedztwa, a selekcja wspiera dzielenie się wybiórcze. Wyniki: sekcja 8 w [PLAN.md](PLAN.md).
 
 ## Instalacja
 
@@ -44,7 +44,7 @@ Gotowe presety w `configs/` (opis w sekcji 8 w [PLAN.md](PLAN.md)):
 .venv/bin/python -m kin_dots.viz.app --config configs/kin_altruism.yaml --speed 16
 ```
 
-Porównanie wielu warunków i ziaren naraz (równolegle):
+Porównanie wielu warunków i ziaren naraz (równolegle; `--table kin` pokazuje metryki pokrewieństwa, `--table behaviour` geny i zachowanie):
 
 ```bash
 .venv/bin/python -m kin_dots.experiments.sweep --steps 40000 --seeds 0 1 2 \
@@ -64,6 +64,8 @@ Testy:
 - `kin_dots/core/genome.py`: układ genomu (które kolumny to które geny).
 - `kin_dots/core/world.py`: stan jako tablice NumPy i krok symulacji.
 - `kin_dots/core/kernels.py`: funkcje Numby (sąsiedzi, dzielenie się, walki, ruch społeczny).
+- `kin_dots/core/genealogy.py`: drzewo genealogiczne i dziennik interakcji.
+- `kin_dots/core/kinship.py`: metryki M3 (pokrewieństwo, Hamilton, Price, klany i oszuści).
 - `kin_dots/viz/app.py`: okno pygame.
 - `kin_dots/experiments/run.py`: runner bez grafiki.
 - `kin_dots/experiments/sweep.py`: wiele warunków i ziaren równolegle, tabela porównawcza.

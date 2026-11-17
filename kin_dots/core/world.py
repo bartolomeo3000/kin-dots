@@ -25,7 +25,10 @@ import numpy as np
 
 from . import genome as G
 from . import kernels as K
+from .genealogy import EV_RANDOM, EventLog, Genealogy
 from .params import Params
+
+RANDOM_PAIRS_PER_STEP = 64  # baseline pairs logged each step for relatedness metrics
 
 _LEDGER_KEYS = {
     "shares": K.L_SHARES, "share_given": K.L_SHARE_GIVEN, "share_received": K.L_SHARE_RECEIVED,
@@ -72,6 +75,16 @@ class World:
         self.nb = max(3, int(p.world_size // p.interaction_radius))  # hash buckets per side
         self._buf = np.empty(cap, dtype=np.int64)  # scratch space for neighbour lists
 
+        # Measurement only (never affects the simulation): genealogy, interaction log,
+        # and a separate generator so measuring does not change the simulation's random stream.
+        self.genealogy = Genealogy()
+        self.events = EventLog()
+        self.metric_rng = np.random.default_rng([p.seed, 7919])
+        self._log_i = np.empty(2 * cap, dtype=np.int64)
+        self._log_j = np.empty(2 * cap, dtype=np.int64)
+        self._log_kind = np.empty(2 * cap, dtype=np.int8)
+        self._log_n = np.zeros(1, dtype=np.int64)
+
         k = p.init_agents
         slots = np.arange(k)
         self.alive[slots] = True
@@ -81,6 +94,7 @@ class World:
         self.genome[slots] = G.founder_genomes(k, self.rng, p.founder_weight_sd)
         self.id[slots] = np.arange(k)
         self.next_id = k
+        self.genealogy.add(self.id[slots], np.full(k, -1, dtype=np.int64), 0)
 
     # ------------------------------------------------------------------ queries
 
@@ -192,12 +206,35 @@ class World:
         acting_k = self.rng.permutation(idx.size)
         u = self.rng.random((idx.size, 5))
         ledger = np.zeros(K.N_LEDGER)
+        self._log_n[0] = 0
         K.interact(acting_k, idx, self.energy, self.alive, self.genome,
                    G.SHARE_W.start, G.ATTACK_W.start, G.TAG.start, p.tag_blind_share, p.attacks_enabled,
-                   p.share_to_random,
+                   p.share_to_random, self._log_i, self._log_j, self._log_kind, self._log_n,
                    nbr_start, nbr, p.birth_threshold, p.share_cost, p.share_benefit,
                    p.attack_cost, p.predation_efficiency, u, self._buf, ledger)
+        self._record_events(idx)
         return {k: float(ledger[i]) for k, i in _LEDGER_KEYS.items()}
+
+    def _record_events(self, idx: np.ndarray) -> None:
+        """Copy this step's encounters into the event log, plus random baseline pairs."""
+        n = int(self._log_n[0])
+        i, j, kind = self._log_i[:n], self._log_j[:n], self._log_kind[:n]
+        r = self.metric_rng
+        ri = idx[r.integers(idx.size, size=RANDOM_PAIRS_PER_STEP)]
+        rj = idx[r.integers(idx.size, size=RANDOM_PAIRS_PER_STEP)]
+        keep = ri != rj
+        i = np.concatenate([i, ri[keep]])
+        j = np.concatenate([j, rj[keep]])
+        kind = np.concatenate([kind, np.full(keep.sum(), EV_RANDOM, dtype=np.int8)])
+
+        beh = self.genome[idx][:, G.BEHAVIOUR_GENES]
+        var = np.maximum(beh.var(axis=0), 1e-9)
+        diff = self.genome[i][:, G.BEHAVIOUR_GENES] - self.genome[j][:, G.BEHAVIOUR_GENES]
+        d2 = (diff * diff / var).sum(axis=1)  # genetic distance, each gene scaled by its variance
+        tdiff = self.genome[i][:, G.TAG] - self.genome[j][:, G.TAG]
+        sim = 1.0 - np.linalg.norm(tdiff, axis=1) / np.sqrt(3.0)
+        self.events.append(kind=kind, actor=self.id[i], target=self.id[j], d2=d2, sim=sim,
+                           actor_e=self.energy[i], target_e=self.energy[j])
 
     def _die(self, idx: np.ndarray):
         starved = self.energy[idx] <= 0
@@ -256,6 +293,7 @@ class World:
         self.age[kids] = -1  # becomes 0 after this step's ageing
         self.id[kids] = np.arange(self.next_id, self.next_id + k)
         self.parent_id[kids] = self.id[parents]
+        self.genealogy.add(self.id[kids], self.id[parents], self.step_count)
         self.next_id += k
         return k, blocked, p.birth_cost * k
 
