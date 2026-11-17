@@ -195,3 +195,40 @@ def test_weights_stay_clipped():
     kids = w.alive & (w.parent_id >= 0)  # founders are not clipped, only offspring
     assert kids.sum() > 0
     assert np.abs(w.genome[kids][:, G.WEIGHT_GENES]).max() <= 2.0
+
+
+def test_seasons_modulate_regrowth_and_keep_ledger():
+    p = SMALL.replace(season_period=100, season_amplitude=0.9, food_init_frac=0.3)
+    w = World(p)
+    factors = []
+    for _ in range(100):
+        f0 = w.total_food()
+        factors.append(w.season_factor())
+        w.step()
+        L = w.last
+        assert w.total_food() - f0 == pytest.approx(L["food_growth"] - L["eaten"], abs=1e-6)
+    assert min(factors) == pytest.approx(0.1, abs=0.01) and max(factors) == pytest.approx(1.9, abs=0.01)
+    assert World(SMALL).season_factor() == 1.0
+
+
+def test_attacks_can_be_disabled():
+    w = _two_agents(attacks_enabled=False)
+    w.genome[0, G.ATTACK_W] = [50, 0, 0, 0]
+    out = w._interact(np.arange(2))
+    assert out["attacks"] == 0 and w.alive[:2].all()
+
+
+def test_share_to_random_can_reach_far_agents():
+    w = World(SMALL.replace(init_agents=3, share_to_random=True))
+    w.x[:3] = [10.0, 11.0, 50.0]
+    w.y[:3] = [10.0, 10.0, 50.0]
+    w.energy[:3] = 10.0
+    w.genome[:3, G.ATTACK_W] = [-50, 0, 0, 0]
+    w.genome[:3, G.SHARE_W] = [-50, 0, 0, 0]
+    w.genome[0, G.SHARE_W] = [50, 0, 0, 0]
+    got_far = False
+    for _ in range(40):
+        w.energy[:3] = 10.0
+        w._interact(np.arange(3))
+        got_far |= w.energy[2] > 10.0
+    assert got_far  # agent 2 is never a neighbour of agent 0

@@ -125,3 +125,39 @@ Uwaga: pierwsze uruchomienie trwa kilka sekund dłużej, bo Numba kompiluje funk
   - M3: mierzyć prawdziwe pokrewieństwo z drzewa genealogicznego, a nie z koloru.
   - Wprowadzić nieliniowość wartości energii (np. większa śmiertelność głodowa, zmienne w czasie łaty jedzenia).
   - Zwiększyć tempo mutacji znacznika.
+
+### Poprawki modelu (2026-11-17, po M2)
+
+Przesiew wariantów (skrypt `kin_dots/experiments/sweep.py`, 30–40k kroków, CSV w `results/`):
+
+| Zmiana | Efekt |
+|---|---|
+| `tag_mutation_sd` 0.02 → 0.08 | Kolor zaczyna mówić coś o pokrewieństwie. Bez tej zmiany cała populacja ma podobne kolory. |
+| Pory roku (`season_period=600`, `season_amplitude=0.9`) | Pojawia się śmierć głodowa, czyli nieliniowość wartości energii. **Bez pór roku dzielenie się zawsze zanika.** |
+| Wolny ruch (`move_speed` 1 → 0.1) | Rodziny zostają razem. `assortment` (podobieństwo sąsiadów minus losowej pary) rośnie z ~0.1 do ~0.24. |
+| Bez walk (`attacks_enabled=false`) | Walki odpowiadały za ~80% śmierci i zagłuszały wszystko inne. |
+
+Pomiar `assortment` jest liczony z koloru, więc to tylko przybliżenie pokrewieństwa. Prawdziwe pokrewieństwo da dopiero M3.
+
+**Wynik 1: dzielenie się z krewnymi** (`configs/kin_altruism.yaml`)
+
+| Warunek | Ziarna | Dzielenie się po 40k kroków | `share_w1` (podobieństwo) |
+|---|---|---|---|
+| biorca = spotkany sąsiad | 5/5 | 6.7–8% spotkań, stabilne lub rośnie | +5.5 do +7.3 |
+| biorca bez rozpoznawania koloru (`kin_altruism_tagblind`) | 2/2 | ~5.7% | ~0 (nie widzi koloru) |
+| biorca = losowa kropka z mapy (`kin_altruism_random_recipient`) | 3/3 | 0.1–0.3%, zanika | −2.6 do −4.4 |
+
+Wyewoluowana reguła to *„biedny oddaje bogatszemu krewnemu”*:
+- `share_w2` ≈ −8 (dzielę się, gdy sam mam mało),
+- `share_w3` ≈ +4 (daję temu, kto ma dużo),
+- średnia energia dawcy ~6.4, biorcy ~12.4, próg rozmnażania 20.
+
+Kropki z małą szansą na przeżycie chudej pory oddają energię krewnym, którzy są bliżej rozmnożenia. Mechanizm przypomina podział na pomocników i rozmnażających się. Sama bliskość krewnych wystarcza (wariant bez koloru też działa), a rozpoznawanie po kolorze podnosi poziom i kieruje pomoc do podobnych. Gdy biorca jest niespokrewniony, przy identycznej ekologii, altruizm znika. Jego źródłem jest więc pokrewieństwo, a nie same reguły świata.
+
+**Wynik 2: powściągliwość wobec krewnych** (`configs/kin_restraint.yaml`, z walkami)
+- Dzielenie się zanika, ale `attack_w1` < 0 (od −0.7 do −3.6) w 4/4 przebiegach z potomstwem obok rodzica. Zaatakowani są mniej podobni niż spotykani (0.76–0.81 vs 0.82–0.83).
+- Przy potomstwie rozrzuconym po mapie nie ma tego efektu (2/2 przebiegi).
+
+**Znane problemy:**
+- Kontrola z potomstwem rozrzuconym po mapie (`dispersal_sd < 0`) **wymiera** w warunku `kin_altruism` (bez walk, z porami roku), także przy `move_speed` 0.3. Potomstwo ląduje na jałowych obszarach i ginie w pierwszej chudej porze. Dlatego czystą kontrolą jest losowy biorca, a nie globalne rozproszenie.
+- Przy `move_speed` 0.1 łaty jedzenia długo stoją puste, bo kropki nie nadążają ich zasiedlać.

@@ -25,6 +25,8 @@ class Params:
     food_growth: float = 0.05      # r: logistic regrowth rate per step
     food_inflow: float = 0.1       # constant regrowth per cell per step (lets empty cells recover; sets pop ~1800)
     food_init_frac: float = 1.0    # initial food as a fraction of capacity
+    season_period: int = 0         # steps per full season cycle; 0 disables seasons
+    season_amplitude: float = 0.0  # food growth and inflow are scaled by 1 + A*sin(2*pi*t/period)
 
     # --- population ---
     init_agents: int = 400
@@ -46,9 +48,12 @@ class Params:
                                         # energy from nothing and the population explodes. The
                                         # Hamilton "b" then comes from *who* is helped (a starving
                                         # relative survives), not from the transfer itself.
+    attacks_enabled: bool = True        # False: nobody can attack (sharing-only control)
     attack_cost: float = 0.2            # paid by an attacker whatever the outcome
     predation_efficiency: float = 0.5   # share of the loser's energy the winner gets
     tag_blind_share: bool = False       # E3 control: sharing decision cannot see tag similarity
+    share_to_random: bool = False       # control: the recipient is a random agent from the whole
+                                        # map instead of the neighbour met (same ecology, no kinship)
     weight_clip: float = 10.0           # decision/movement weights are kept in [-clip, clip]
 
     # --- reproduction (asexual) ---

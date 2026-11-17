@@ -4,7 +4,7 @@ Ewolucyjna symulacja kropek-agentów, które jedzą, walczą, rozmnażają się 
 
 Szczegóły modelu, metryki, eksperymenty i kamienie milowe: [PLAN.md](PLAN.md).
 
-**Status:** M2 gotowy (dzielenie się, atak, ruch do swoich i od obcych, statystyki interakcji). Pierwsze wyniki i wnioski: sekcja 8 w [PLAN.md](PLAN.md).
+**Status:** M2 gotowy, model poprawiony. Dzielenie się z krewnymi ewoluuje w presecie `kin_altruism` i znika w kontroli z biorcą losowanym z całej mapy. Wyniki i wnioski: sekcja 8 w [PLAN.md](PLAN.md).
 
 ## Instalacja
 
@@ -33,6 +33,25 @@ Bez grafiki, zapis szeregu czasowego do CSV:
 
 Obie komendy przyjmują `--config configs/default.yaml` (lub własny YAML) i `--seed N`.
 
+Gotowe presety w `configs/` (opis w sekcji 8 w [PLAN.md](PLAN.md)):
+
+- `kin_altruism.yaml`: warunek, w którym ewoluuje dzielenie się z krewnymi.
+- `kin_altruism_random_recipient.yaml`: kontrola z biorcą losowanym z całej mapy, w której altruizm znika.
+- `kin_altruism_tagblind.yaml`: kontrola, w której dzielenie się nie widzi koloru.
+- `kin_restraint.yaml`: wariant z walkami, w którym ewoluuje powściągliwość wobec krewnych.
+
+```bash
+.venv/bin/python -m kin_dots.viz.app --config configs/kin_altruism.yaml --speed 16
+```
+
+Porównanie wielu warunków i ziaren naraz (równolegle):
+
+```bash
+.venv/bin/python -m kin_dots.experiments.sweep --steps 40000 --seeds 0 1 2 \
+  --cond kin season_period=600 season_amplitude=0.9 move_speed=0.1 attacks_enabled=False \
+  --cond kontrola season_period=600 season_amplitude=0.9 move_speed=0.1 attacks_enabled=False share_to_random=True
+```
+
 Testy:
 
 ```bash
@@ -47,5 +66,6 @@ Testy:
 - `kin_dots/core/kernels.py`: funkcje Numby (sąsiedzi, dzielenie się, walki, ruch społeczny).
 - `kin_dots/viz/app.py`: okno pygame.
 - `kin_dots/experiments/run.py`: runner bez grafiki.
+- `kin_dots/experiments/sweep.py`: wiele warunków i ziaren równolegle, tabela porównawcza.
 - `configs/`: presety parametrów.
 - `tests/`: testy determinizmu, bilansu energii i jedzenia oraz poprawności stanu.

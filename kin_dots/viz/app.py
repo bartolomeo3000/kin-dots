@@ -218,7 +218,7 @@ class Viewer:
             f"births      {c['total_births']}",
             f"died/killed {c['total_deaths']}/{c['total_killed']}",
             f"p(share|kin)       {p_share:.3f}",
-            f"p(attack|stranger) {p_attack:.3f}",
+            f"p(attack|stranger) {p_attack:.3f}" if w.p.attacks_enabled else "p(attack|stranger) off",
             f"harvest     {c.get('mean_harvest', 0):.3f}",
             "",
             f"seed {w.p.seed}   speed {self.steps_per_frame}/frame   fps {self.clock.get_fps():.0f}",

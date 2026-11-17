@@ -30,7 +30,9 @@ L_ENCOUNTERS = 9      # interactions considered (agent had >= 1 neighbour)
 L_SIM_ENCOUNTER = 10  # sum of tag similarity over encounters
 L_SIM_SHARE = 11      # sum of tag similarity over donations
 L_SIM_ATTACK = 12     # sum of tag similarity over attacks
-N_LEDGER = 13
+L_DONOR_E = 13        # sum of donors' energy just before donating
+L_RECIPIENT_E = 14    # sum of recipients' energy just before receiving
+N_LEDGER = 15
 
 INV_SQRT3 = 1.0 / np.sqrt(3.0)
 
@@ -168,7 +170,8 @@ def social_vectors(idx, x, y, alive, genome, tag0, nbr_start, nbr, world_size):
 
 
 @njit(cache=True)
-def interact(acting_k, idx, energy, alive, genome, share0, attack0, tag0, tag_blind_share,
+def interact(acting_k, idx, energy, alive, genome, share0, attack0, tag0, tag_blind_share, attacks_enabled,
+             share_to_random,
              nbr_start, nbr, energy_scale, share_cost, share_benefit, attack_cost,
              predation_efficiency, u, buf, ledger):
     """Agents meet one random living neighbour each and may attack it or donate energy.
@@ -180,7 +183,9 @@ def interact(acting_k, idx, energy, alive, genome, share0, attack0, tag0, tag_bl
     Fight: attacker wins with probability e_a / (e_a + e_t); the loser dies and the
     winner gets predation_efficiency * the loser's energy.
     `alive` and `energy` are modified in place.
-    u: (len(acting_k), 4) uniforms for [pick neighbour, attack?, share?, fight outcome].
+    u: (len(acting_k), 5) uniforms for [pick neighbour, attack?, share?, fight outcome, random recipient].
+    share_to_random: the sharing decision and transfer use a random living agent from
+    idx instead of the neighbour (control without kin structure).
     """
     for m in range(acting_k.size):
         k = acting_k[m]
@@ -203,7 +208,7 @@ def interact(acting_k, idx, energy, alive, genome, share0, attack0, tag0, tag_bl
 
         z_att = (genome[i, attack0] + genome[i, attack0 + 1] * sim
                  + genome[i, attack0 + 2] * ei + genome[i, attack0 + 3] * ej)
-        if u[m, 1] < _sigmoid(z_att):
+        if attacks_enabled and u[m, 1] < _sigmoid(z_att):
             ledger[L_ATTACKS] += 1
             ledger[L_SIM_ATTACK] += sim
             energy[i] -= attack_cost
@@ -226,10 +231,18 @@ def interact(acting_k, idx, energy, alive, genome, share0, attack0, tag0, tag_bl
             alive[loser] = False
             continue
 
+        if share_to_random:
+            j = idx[min(int(u[m, 4] * idx.size), idx.size - 1)]
+            if j == i or not alive[j]:
+                continue
+            sim = tag_similarity(genome, tag0, i, j)
+            ej = min(energy[j] / energy_scale, 2.0)
         s_in = 0.0 if tag_blind_share else sim
         z_sh = (genome[i, share0] + genome[i, share0 + 1] * s_in
                 + genome[i, share0 + 2] * ei + genome[i, share0 + 3] * ej)
         if energy[i] > share_cost and u[m, 2] < _sigmoid(z_sh):
+            ledger[L_DONOR_E] += energy[i]
+            ledger[L_RECIPIENT_E] += energy[j]
             energy[i] -= share_cost
             energy[j] += share_benefit
             ledger[L_SHARES] += 1

@@ -33,6 +33,7 @@ _LEDGER_KEYS = {
     "killed_energy": K.L_KILLED_ENERGY, "predation_gain": K.L_PREDATION_GAIN,
     "attacker_lost": K.L_ATTACKER_LOST, "encounters": K.L_ENCOUNTERS,
     "sim_encounter": K.L_SIM_ENCOUNTER, "sim_share": K.L_SIM_SHARE, "sim_attack": K.L_SIM_ATTACK,
+    "donor_energy": K.L_DONOR_E, "recipient_energy": K.L_RECIPIENT_E,
 }
 
 # The 8 neighbouring food cells and the unit vector pointing to each.
@@ -64,6 +65,7 @@ class World:
         self.next_id = 0
         self.total_births = 0
         self.total_deaths = 0   # starvation + old age
+        self.total_starved = 0  # starvation only
         self.total_killed = 0   # deaths in fights
         self.last: Dict[str, float] = {}
 
@@ -188,18 +190,21 @@ class World:
             nbr_start, nbr = K.neighbour_lists(idx, self.x, self.y, self.alive, p.world_size,
                                                self.nb, p.interaction_radius, self._buf)
         acting_k = self.rng.permutation(idx.size)
-        u = self.rng.random((idx.size, 4))
+        u = self.rng.random((idx.size, 5))
         ledger = np.zeros(K.N_LEDGER)
         K.interact(acting_k, idx, self.energy, self.alive, self.genome,
-                   G.SHARE_W.start, G.ATTACK_W.start, G.TAG.start, p.tag_blind_share,
+                   G.SHARE_W.start, G.ATTACK_W.start, G.TAG.start, p.tag_blind_share, p.attacks_enabled,
+                   p.share_to_random,
                    nbr_start, nbr, p.birth_threshold, p.share_cost, p.share_benefit,
                    p.attack_cost, p.predation_efficiency, u, self._buf, ledger)
         return {k: float(ledger[i]) for k, i in _LEDGER_KEYS.items()}
 
     def _die(self, idx: np.ndarray):
-        dead = self.energy[idx] <= 0
+        starved = self.energy[idx] <= 0
+        dead = starved.copy()
         if self.p.max_age > 0:
             dead |= self.age[idx] >= self.p.max_age
+        self.total_starved += int(starved.sum())
         d = idx[dead]
         removed = float(self.energy[d].sum())
         self.alive[d] = False
@@ -254,15 +259,38 @@ class World:
         self.next_id += k
         return k, blocked, p.birth_cost * k
 
+    def season_factor(self) -> float:
+        """Multiplier on food regrowth: 1 without seasons, oscillates with them."""
+        p = self.p
+        if p.season_period <= 0 or p.season_amplitude == 0:
+            return 1.0
+        return max(0.0, 1.0 + p.season_amplitude * np.sin(2 * np.pi * self.step_count / p.season_period))
+
     def _regrow(self) -> float:
         p = self.p
         before = self.food.sum()
         f = self.food
-        f += p.food_growth * f * (1.0 - f / p.food_capacity) + p.food_inflow
+        s = self.season_factor()
+        f += s * (p.food_growth * f * (1.0 - f / p.food_capacity) + p.food_inflow)
         np.clip(f, 0.0, p.food_capacity, out=f)
         return float(self.food.sum() - before)
 
     # ------------------------------------------------------------------ summaries
+
+    def random_pair_similarity(self, n_pairs: int = 500) -> float:
+        """Mean tag similarity of random pairs of living agents (baseline for assortment).
+
+        Uses its own generator seeded by the step number, so calling it never
+        changes the simulation's random stream.
+        """
+        idx = np.flatnonzero(self.alive)
+        if idx.size < 2:
+            return float("nan")
+        r = np.random.default_rng(self.step_count)
+        i = idx[r.integers(idx.size, size=n_pairs)]
+        j = idx[r.integers(idx.size, size=n_pairs)]
+        d = np.linalg.norm(self.genome[i, G.TAG] - self.genome[j, G.TAG], axis=1)
+        return float(np.mean(1.0 - d / np.sqrt(3.0)))
 
     def census(self) -> Dict[str, float]:
         a = self.alive
@@ -273,6 +301,8 @@ class World:
             "total_births": self.total_births,
             "total_deaths": self.total_deaths,
             "total_killed": self.total_killed,
+            "total_starved": self.total_starved,
+            "season": self.season_factor(),
         }
         # Behaviour actually shown in the last step (per encounter), and who it was aimed at.
         L = self.last
@@ -283,6 +313,10 @@ class World:
         out["sim_encounter"] = L.get("sim_encounter", 0.0) / enc if enc else nan
         out["sim_share"] = L["sim_share"] / L["shares"] if L.get("shares") else nan
         out["sim_attack"] = L["sim_attack"] / L["attacks"] if L.get("attacks") else nan
+        out["donor_energy"] = L["donor_energy"] / L["shares"] if L.get("shares") else nan
+        out["recipient_energy"] = L["recipient_energy"] / L["shares"] if L.get("shares") else nan
+        out["sim_random"] = self.random_pair_similarity()
+        out["assortment"] = out["sim_encounter"] - out["sim_random"]
         if a.any():
             g = self.genome[a]
             out["mean_energy"] = float(self.energy[a].mean())

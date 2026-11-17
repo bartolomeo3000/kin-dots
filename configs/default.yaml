@@ -5,6 +5,8 @@ food_capacity: 10.0
 food_growth: 0.05
 food_inflow: 0.1
 food_init_frac: 1.0
+season_period: 0
+season_amplitude: 0.0
 init_agents: 400
 max_agents: 20000
 init_energy: 10.0
@@ -16,6 +18,7 @@ max_age: 300
 interaction_radius: 4.0
 share_cost: 1.0
 share_benefit: 0.9
+attacks_enabled: true
 attack_cost: 0.2
 predation_efficiency: 0.5
 tag_blind_share: false

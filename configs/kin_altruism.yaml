@@ -1,0 +1,9 @@
+# Warunek, w którym wyewoluowało dzielenie się z krewnymi (PLAN.md, sekcja 8).
+# Pozostałe parametry: wartości domyślne z kin_dots/core/params.py.
+world_size: 300.0
+grid_cells: 75
+move_speed: 0.1          # wolny ruch: rodziny zostają razem (assortment ~0.24)
+tag_mutation_sd: 0.08    # kolor mutuje na tyle szybko, że znaczy coś o pokrewieństwie
+season_period: 600       # pory roku: w chudej porze kropki umierają z głodu,
+season_amplitude: 0.9    #   więc energia jest warta różnie dla różnych osobników
+attacks_enabled: false   # bez walk (z walkami: zob. kin_restraint.yaml)
