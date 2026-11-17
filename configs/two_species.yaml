@@ -1,0 +1,10 @@
+# Dwa gatunki: walka tylko z obcym gatunkiem, dzielenie się tylko we własnym,
+# obrona sąsiada (przejęcie walki na siebie). Gatunek 0 = kropki, 1 = kwadraty.
+# Bez pór roku: z porami jeden gatunek w chudej porze spadał do ~25 kropek.
+world_size: 300.0
+grid_cells: 75
+move_speed: 0.1
+tag_mutation_sd: 0.08
+n_species: 2
+species_init: halves
+defense_enabled: true

@@ -226,3 +226,36 @@ Wyniki (40k kroków, 2 ziarna na warunek, okna co 8000 kroków; `results/m3/`):
 - **Ekologia przy wolnym ruchu:** kropki żyją w wyspowych koloniach, które wyjadają do zera, a resztę mapy pokrywa jedzenie, do którego nie docierają. Warto rozważyć szybszy ruch w porze żyznej albo większe rozproszenie potomstwa.
 
 Presety: `configs/kin_alarm.yaml`, `configs/kin_alarm_random_warn.yaml`.
+
+### Wariant: dwa gatunki (2026-11-17)
+
+**Model:**
+- `n_species=2`: gatunek to dziedziczona, niemutująca etykieta. Na starcie gatunki zajmują dwie połowy mapy.
+- **Walka** tylko z obcym gatunkiem (kontrola `fights_within_species`). **Dzielenie się** tylko we własnym.
+- **Nowa akcja: obrona** (`defense_enabled`, geny `defend_w0..3`). Gdy wróg atakuje kropkę, jej sąsiad z tego samego gatunku może przejąć walkę na siebie. Decyzja zależy od podobieństwa do ofiary, własnej energii i energii napastnika.
+- W podglądzie gatunek 1 to kwadraty. Nowe tryby kolorowania: `species`, `p(defend|kin)`.
+- Losowe pary do porównań w pomiarach M3 są brane z tego samego gatunku.
+- Genom ma teraz 23 geny. Przebiegi z jednym gatunkiem nie zależą od parametrów gatunków (test), ale dla tego samego ziarna różnią się od wcześniejszych wersji kodu.
+
+**Pierwszy przebieg** (30k kroków, 2 ziarna, bez pór roku; `results/species1`):
+
+| | `two_species` | kontrola `fights_within_species` |
+|---|---|---|
+| współistnienie | tak, 1600–2600 na gatunek | tak, 1300–3000 |
+| obrona (na atak) | 7–19% | 8–16% |
+| `r` obrońca–ofiara vs spotykani | **0.69–0.98 vs ~0.58** | 0.36–0.86 vs ~0.56 |
+| bliscy krewni wśród bronionych | 0.50–0.88 | 0.24–0.57 |
+| geny obrony (`defend_w0`) | −2.4…−3.6 (start −3), brak trendu | brak trendu |
+| `attack_w1` | ~0…−0.3 | **−1.2…−2.5** (powściągliwość wobec krewnych) |
+| dzielenie się | zanika | zanika |
+
+**Wnioski (wstępne):**
+- **Gatunki stabilnie współistnieją,** a front między nimi faluje. Z porami roku jeden gatunek w chudej porze spadał do ~25 kropek, dlatego preset jest bez pór roku.
+- **Obrona trafia do bliskich krewnych,** ale częściowo mechanicznie: obrońca to sąsiad ofiary, a sąsiedzi to krewni. Geny obrony nie wykazują wyraźnej selekcji. Walki zdarzają się tylko na froncie (~0.1% spotkań), więc sygnał jest słaby.
+- **Do sprawdzenia:**
+  - dłuższe przebiegi,
+  - większy udział frontu (np. `species_init: mixed` albo mniejsza mapa),
+  - pory roku z łagodniejszą amplitudą, żeby dzielenie się miało szansę,
+  - porównanie obrony przy walkach z obcymi i z własnymi.
+
+Presety: `configs/two_species.yaml`, `configs/two_species_fights_within.yaml`.

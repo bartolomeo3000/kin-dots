@@ -9,7 +9,7 @@ Keys:
     C            colour agents by: tag -> p(share) -> p(attack) -> p(alarm) -> harvest -> energy
 
 Predators (if enabled) are red triangles; agents that called an alarm this step
-get a white ring.
+get a white ring. With two species, species 0 is drawn as dots and species 1 as squares.
     F            show / hide the food layer
     R            restart with the same seed
     N            restart with the next seed
@@ -42,7 +42,9 @@ RED = (240, 90, 80)
 GREEN = (90, 190, 110)
 CYAN = (90, 220, 230)
 PRED_COLOR = (255, 60, 60)
-COLOR_MODES = ("tag", "p(share|kin)", "p(attack|stranger)", "p(alarm|kin)", "harvest", "energy")
+COLOR_MODES = ("tag", "species", "p(share|kin)", "p(attack|stranger)", "p(alarm|kin)",
+               "p(defend|kin)", "harvest", "energy")
+SPECIES_COLORS = np.array([[80, 160, 255], [255, 150, 50]], dtype=np.uint8)
 HISTORY = 600       # samples kept for the side-panel plots
 SMOOTH = 0.03       # exponential smoothing of the noisy per-step rates
 KIN_EVERY = 100     # steps between genetic-relatedness measurements
@@ -85,11 +87,11 @@ class Viewer:
     def reset(self, seed: int) -> None:
         self.params = self.params.replace(seed=seed)
         self.world = World(self.params)
-        keys = ("population", "share_rate", "attack_rate", "alarm_rate",
+        keys = ("population", "share_rate", "attack_rate", "alarm_rate", "defend_rate",
                 "sim_encounter", "sim_share", "sim_attack")
         self.hist = {k: deque(maxlen=HISTORY) for k in keys}
         self.kin_hist = {k: deque(maxlen=HISTORY // 4)
-                         for k in ("r_met", "r_share", "r_attack", "r_alarm")}
+                         for k in ("r_met", "r_share", "r_attack", "r_alarm", "r_defend")}
         self.smooth = {}
         self._record()
 
@@ -173,6 +175,10 @@ class Viewer:
             return (40 + 215 * g[:, G.TAG]).astype(np.uint8)
         if mode == "p(share|kin)":
             return _ramp(propensity(g, G.SHARE_W, 1.0))
+        if mode == "species":
+            return SPECIES_COLORS[np.clip(w.species[idx], 0, 1)]
+        if mode == "p(defend|kin)":
+            return _ramp(G.propensity(g, G.DEFEND_W, 1.0, _REF_E, _REF_E))
         if mode == "p(alarm|kin)":
             # reference: kin around (sim 1), half-full energy, 3 neighbours
             return _ramp(G.propensity(g, G.ALARM_W, 1.0, _REF_E, 0.3))
@@ -193,8 +199,13 @@ class Viewer:
         py = (w.y[idx] * scale).astype(int)
         cols = self._agent_colors(idx)
         circle = pygame.draw.circle
-        for x, y, c in zip(px.tolist(), py.tolist(), cols.tolist()):
-            circle(self.screen, c, (x, y), 2)
+        square = w.species[idx] == 1
+        rect = pygame.draw.rect
+        for x, y, c, sq in zip(px.tolist(), py.tolist(), cols.tolist(), square.tolist()):
+            if sq:
+                rect(self.screen, c, (x - 2, y - 2, 5, 5))
+            else:
+                circle(self.screen, c, (x, y), 2)
         callers = idx[w.caller[idx] == 1]
         for x, y in zip((w.x[callers] * scale).astype(int).tolist(), (w.y[callers] * scale).astype(int).tolist()):
             circle(self.screen, (255, 255, 255), (x, y), 6, 1)
@@ -236,14 +247,17 @@ class Viewer:
         p_attack = float(propensity(g, G.ATTACK_W, 0.5).mean()) if a.any() else 0.0
         lines = [
             f"step        {w.step_count}",
-            f"population  {c['population']}",
+            f"population  {c['population']}"
+            + (f"  ({c['pop_s0']}/{c['pop_s1']})" if w.p.n_species > 1 else ""),
             f"mean energy {c.get('mean_energy', 0):.2f}",
             f"births      {c['total_births']}",
             f"died/killed/eaten {c['total_deaths']}/{c['total_killed']}/{c['total_predated']}",
             f"p(share|kin)       {p_share:.3f}",
             f"p(attack|stranger) {p_attack:.3f}" if w.p.attacks_enabled else "p(attack|stranger) off",
             (f"p(alarm|kin)       {float(G.propensity(g, G.ALARM_W, 1.0, _REF_E, 0.3).mean()):.3f}"
-             if w.p.n_predators and a.any() else "predators off"),
+             if w.p.n_predators and a.any() else
+             f"p(defend|kin)      {float(G.propensity(g, G.DEFEND_W, 1.0, _REF_E, _REF_E).mean()):.3f}"
+             if w.p.defense_enabled and a.any() else "predators off"),
             f"harvest     {c.get('mean_harvest', 0):.3f}",
             "",
             f"seed {w.p.seed}   speed {self.steps_per_frame}/frame   fps {self.clock.get_fps():.0f}",
@@ -259,7 +273,8 @@ class Viewer:
         self._plot(x0, y, pw, ph, [("population", h["population"], BLUE)])
         self._plot(x0, y + ph + 8, pw, ph,
                    [("share", h["share_rate"], YELLOW), ("attack", h["attack_rate"], RED)]
-                   + ([("alarm/det", h["alarm_rate"], CYAN)] if w.p.n_predators else []))
+                   + ([("alarm/det", h["alarm_rate"], CYAN)] if w.p.n_predators else [])
+                   + ([("def", h["defend_rate"], GREEN)] if w.p.defense_enabled else []))
         atk = w.p.attacks_enabled
         self._plot(x0, y + 2 * (ph + 8), pw, ph,
                    [("sim met", h["sim_encounter"], MUTED), ("help", h["sim_share"], GREEN)]
@@ -268,7 +283,8 @@ class Viewer:
         self._plot(x0, y + 3 * (ph + 8), pw, ph,
                    [("r met", k["r_met"], MUTED), ("help", k["r_share"], GREEN)]
                    + ([("atk", k["r_attack"], RED)] if atk else [])
-                   + ([("warn", k["r_alarm"], CYAN)] if w.p.n_predators else []), n_max=HISTORY // 4)
+                   + ([("warn", k["r_alarm"], CYAN)] if w.p.n_predators else [])
+                   + ([("def", k["r_defend"], YELLOW)] if w.p.defense_enabled else []), n_max=HISTORY // 4)
 
         help_lines = ["SPACE pause  RIGHT step", "UP/DOWN speed  C colour", "F food  R restart  N new seed"]
         for i, s in enumerate(help_lines):

@@ -25,7 +25,8 @@ from kin_dots.core import Params, World
 from kin_dots.core.kinship import PriceTracker, clans_and_cheaters, kinship_report
 
 RATE_KEYS = ("share_rate", "attack_rate", "sim_encounter", "sim_share", "sim_attack",
-             "sim_random", "assortment", "donor_energy", "recipient_energy", "alarm_rate", "sim_warned")
+             "sim_random", "assortment", "donor_energy", "recipient_energy", "alarm_rate", "sim_warned",
+             "defend_rate", "sim_defend")
 SHOW = ("population", "share_rate", "attack_rate", "mean_share_w0", "mean_share_w1",
         "mean_share_w2", "mean_share_w3", "assortment", "sim_encounter", "sim_share",
         "donor_energy", "recipient_energy", "mean_energy")
@@ -35,6 +36,9 @@ KIN_SHOW = ("r_met", "r_share", "r_attack", "close_kin_share", "close_kin_met", 
 PRED_SHOW = ("population", "alarm_rate", "mean_alarm_w0", "mean_alarm_w1", "mean_alarm_w2",
              "mean_alarm_w3", "r_met", "r_alarm", "close_kin_alarm", "sel_alarm_w0", "sel_alarm_w1",
              "predated_win", "share_rate")
+SPECIES_SHOW = ("pop_s0", "pop_s1", "attack_rate", "defend_rate", "mean_defend_w0", "mean_defend_w1",
+                "mean_attack_w1", "r_met", "r_defend", "close_kin_defend", "sel_defend_w0",
+                "sel_defend_w1", "share_rate", "r_share")
 PRICE_WINDOW = 600  # steps over which the Price decomposition is measured, ending at each report
 
 
@@ -96,7 +100,7 @@ def main(argv=None) -> int:
     ap.add_argument("--windows", type=int, default=5, help="number of reporting windows")
     ap.add_argument("--procs", type=int, default=max(1, (os.cpu_count() or 2) - 2))
     ap.add_argument("--out", type=Path, help="directory for per-run CSVs")
-    ap.add_argument("--table", choices=("behaviour", "kin", "pred", "both"), default="both",
+    ap.add_argument("--table", choices=("behaviour", "kin", "pred", "species", "both"), default="both",
                     help="which summary table(s) to print")
     args = ap.parse_args(argv)
 
@@ -135,6 +139,8 @@ def main(argv=None) -> int:
             table(KIN_SHOW, ("", lambda r: ""))
         if args.table == "pred":
             table(PRED_SHOW, ("", lambda r: ""))
+        if args.table == "species":
+            table(SPECIES_SHOW, ("", lambda r: ""))
         if rows and rows[-1]["population"] == 0:
             print("   EXTINCT")
     return 0

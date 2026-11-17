@@ -35,7 +35,8 @@ from numba import njit
 
 from . import genome as G
 from . import kernels as K
-from .genealogy import EV_ALARM, EV_ATTACK, EV_MET, EV_RANDOM, EV_SHARE, EVENT_NAMES, mrca_pair
+from .genealogy import (EV_ALARM, EV_ATTACK, EV_DEFEND, EV_MET, EV_RANDOM, EV_SHARE, EVENT_NAMES,
+                        mrca_pair)
 
 MAX_PAIRS_FOR_GENEALOGY = 3000  # sample size for the (slower) genealogical distances
 
@@ -50,7 +51,7 @@ def kinship_report(world, events: Dict[str, np.ndarray] = None) -> Dict[str, flo
     gen = world.genealogy
     r = np.random.default_rng([world.p.seed, world.step_count, 31])
 
-    for k in (EV_MET, EV_SHARE, EV_ATTACK, EV_ALARM, EV_RANDOM):
+    for k in (EV_MET, EV_SHARE, EV_ATTACK, EV_ALARM, EV_DEFEND, EV_RANDOM):
         name = EVENT_NAMES[k]
         m = np.flatnonzero(kind == k)
         out[f"n_{name}"] = int(m.size)

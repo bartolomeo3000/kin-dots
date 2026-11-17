@@ -1,0 +1,9 @@
+# KONTROLA: jak two_species, ale walki możliwe też wewnątrz gatunku.
+world_size: 300.0
+grid_cells: 75
+move_speed: 0.1
+tag_mutation_sd: 0.08
+n_species: 2
+species_init: halves
+defense_enabled: true
+fights_within_species: true

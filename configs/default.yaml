@@ -24,6 +24,10 @@ predation_efficiency: 0.5
 tag_blind_share: false
 share_to_random: false
 weight_clip: 10.0
+n_species: 1
+species_init: halves
+fights_within_species: false
+defense_enabled: false
 n_predators: 0
 predator_speed: 0.5
 predator_sight: 10.0

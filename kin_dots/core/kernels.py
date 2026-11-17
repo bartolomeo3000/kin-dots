@@ -32,7 +32,13 @@ L_SIM_SHARE = 11      # sum of tag similarity over donations
 L_SIM_ATTACK = 12     # sum of tag similarity over attacks
 L_DONOR_E = 13        # sum of donors' energy just before donating
 L_RECIPIENT_E = 14    # sum of recipients' energy just before receiving
-N_LEDGER = 15
+L_DEFENSES = 15       # a neighbour took the fight instead of the attacked agent
+L_DEFENDER_DIED = 16  # ...and died in it
+L_SIM_DEFEND = 17     # sum of tag similarity defender-victim
+L_CROSS_ATTACKS = 18  # attacks on the other species
+N_LEDGER = 19
+
+LOG_DEFEND = 5        # event kind for defend (matches genealogy.EV_DEFEND)
 
 INV_SQRT3 = 1.0 / np.sqrt(3.0)
 
@@ -173,7 +179,8 @@ def social_vectors(idx, x, y, alive, genome, tag0, nbr_start, nbr, world_size):
 def interact(acting_k, idx, energy, alive, genome, share0, attack0, tag0, tag_blind_share, attacks_enabled,
              share_to_random, log_i, log_j, log_kind, log_n,
              nbr_start, nbr, energy_scale, share_cost, share_benefit, attack_cost,
-             predation_efficiency, u, buf, ledger):
+             predation_efficiency, u, buf, ledger,
+             species, fight_same_species, defense_enabled, defend0, slot_pos, seed):
     """Agents meet one random living neighbour each and may attack it or donate energy.
 
     acting_k: shuffled positions into idx (the order in which agents act).
@@ -187,8 +194,17 @@ def interact(acting_k, idx, energy, alive, genome, share0, attack0, tag0, tag_bl
     share_to_random: the sharing decision and transfer use a random living agent from
     idx instead of the neighbour (control without kin structure).
     Every encounter is logged as (i, j, kind) into log_i/log_j/log_kind (capacity
-    >= 2 * len(acting_k)); kind 0 = met, 1 = share, 2 = attack. log_n[0] = count.
+    >= 3 * len(acting_k)); kind 0 = met, 1 = share, 2 = attack, 5 = defend. log_n[0] = count.
+
+    Species: attacks need species[i] != species[j] unless fight_same_species; sharing
+    needs the same species. Defense (if enabled): before a fight, the victim's
+    same-species neighbours (in random order, from `seed`) may each take the fight on
+    themselves, decided by their DEFEND genes from [1, similarity to the victim,
+    own energy, attacker's energy]. The first that does replaces the victim.
+    slot_pos maps an agent slot to its position k in idx (-1 if absent).
     """
+    if defense_enabled:
+        np.random.seed(seed)
     for m in range(acting_k.size):
         k = acting_k[m]
         i = idx[k]
@@ -215,14 +231,44 @@ def interact(acting_k, idx, energy, alive, genome, share0, attack0, tag0, tag_bl
 
         z_att = (genome[i, attack0] + genome[i, attack0 + 1] * sim
                  + genome[i, attack0 + 2] * ei + genome[i, attack0 + 3] * ej)
-        if attacks_enabled and u[m, 1] < _sigmoid(z_att):
+        same = species[i] == species[j]
+        if attacks_enabled and (fight_same_species or not same) and u[m, 1] < _sigmoid(z_att):
             ledger[L_ATTACKS] += 1
             ledger[L_SIM_ATTACK] += sim
+            if not same:
+                ledger[L_CROSS_ATTACKS] += 1
             n = log_n[0]
             log_i[n] = i
             log_j[n] = j
             log_kind[n] = 2
             log_n[0] = n + 1
+            defended = False
+            if defense_enabled:
+                kj = slot_pos[j]
+                if kj >= 0:
+                    lo = nbr_start[kj]
+                    cnt_d = nbr_start[kj + 1] - lo
+                    off = np.random.randint(cnt_d) if cnt_d > 0 else 0
+                    ea_s = min(energy[i] / energy_scale, 2.0)
+                    for t in range(cnt_d):
+                        d = nbr[lo + (off + t) % cnt_d]
+                        if d == i or not alive[d] or species[d] != species[j]:
+                            continue
+                        sd = tag_similarity(genome, tag0, d, j)
+                        z_d = (genome[d, defend0] + genome[d, defend0 + 1] * sd
+                               + genome[d, defend0 + 2] * min(energy[d] / energy_scale, 2.0)
+                               + genome[d, defend0 + 3] * ea_s)
+                        if np.random.random() < _sigmoid(z_d):
+                            ledger[L_DEFENSES] += 1
+                            ledger[L_SIM_DEFEND] += sd
+                            n = log_n[0]
+                            log_i[n] = d
+                            log_j[n] = j
+                            log_kind[n] = LOG_DEFEND
+                            log_n[0] = n + 1
+                            j = d  # the defender takes the fight
+                            defended = True
+                            break
             energy[i] -= attack_cost
             ledger[L_ATTACK_COST] += attack_cost
             ea = max(energy[i], 0.0)
@@ -239,6 +285,8 @@ def interact(acting_k, idx, energy, alive, genome, share0, attack0, tag0, tag_bl
             ledger[L_PREDATION_GAIN] += gain
             ledger[L_KILLED_ENERGY] += el
             ledger[L_KILLED] += 1
+            if defended and loser == j:
+                ledger[L_DEFENDER_DIED] += 1
             energy[loser] = 0.0
             alive[loser] = False
             continue
@@ -249,6 +297,8 @@ def interact(acting_k, idx, energy, alive, genome, share0, attack0, tag0, tag_bl
                 continue
             sim = tag_similarity(genome, tag0, i, j)
             ej = min(energy[j] / energy_scale, 2.0)
+        if species[i] != species[j]:
+            continue  # no gifts to the other species
         s_in = 0.0 if tag_blind_share else sim
         z_sh = (genome[i, share0] + genome[i, share0 + 1] * s_in
                 + genome[i, share0 + 2] * ei + genome[i, share0 + 3] * ej)

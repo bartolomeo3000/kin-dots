@@ -23,8 +23,9 @@ EV_SHARE = 1    # actor donated energy to target
 EV_ATTACK = 2   # actor attacked target
 EV_RANDOM = 3   # a random pair from the whole population (baseline, not an interaction)
 EV_ALARM = 4    # actor's alarm call warned target
+EV_DEFEND = 5   # actor took a fight on itself to defend target (kernels.LOG_DEFEND)
 EVENT_NAMES = {EV_MET: "met", EV_SHARE: "share", EV_ATTACK: "attack", EV_RANDOM: "random",
-               EV_ALARM: "alarm"}
+               EV_ALARM: "alarm", EV_DEFEND: "defend"}
 
 
 class Genealogy:

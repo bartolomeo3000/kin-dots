@@ -40,6 +40,8 @@ _LEDGER_KEYS = {
     "attacker_lost": K.L_ATTACKER_LOST, "encounters": K.L_ENCOUNTERS,
     "sim_encounter": K.L_SIM_ENCOUNTER, "sim_share": K.L_SIM_SHARE, "sim_attack": K.L_SIM_ATTACK,
     "donor_energy": K.L_DONOR_E, "recipient_energy": K.L_RECIPIENT_E,
+    "defenses": K.L_DEFENSES, "defender_died": K.L_DEFENDER_DIED, "sim_defend": K.L_SIM_DEFEND,
+    "cross_attacks": K.L_CROSS_ATTACKS,
 }
 _PRED_KEYS = {
     "detections": PR.P_DETECTIONS, "alarms": PR.P_ALARMS, "warned": PR.P_WARNED,
@@ -69,6 +71,8 @@ class World:
         self.id = np.full(cap, -1, dtype=np.int64)
         self.parent_id = np.full(cap, -1, dtype=np.int64)
         self.genome = np.zeros((cap, G.N_GENES))
+        self.species = np.zeros(cap, dtype=np.int8)
+        self._slot_pos = np.full(cap, -1, dtype=np.int64)
 
         n = p.grid_cells
         self.food = np.full((n, n), p.food_capacity * p.food_init_frac)
@@ -92,9 +96,9 @@ class World:
         self.genealogy = Genealogy()
         self.events = EventLog()
         self.metric_rng = np.random.default_rng([p.seed, 7919])
-        self._log_i = np.empty(2 * cap, dtype=np.int64)
-        self._log_j = np.empty(2 * cap, dtype=np.int64)
-        self._log_kind = np.empty(2 * cap, dtype=np.int8)
+        self._log_i = np.empty(3 * cap, dtype=np.int64)
+        self._log_j = np.empty(3 * cap, dtype=np.int64)
+        self._log_kind = np.empty(3 * cap, dtype=np.int8)
         self._log_n = np.zeros(1, dtype=np.int64)
 
         k = p.init_agents
@@ -107,6 +111,14 @@ class World:
         self.id[slots] = np.arange(k)
         self.next_id = k
         self.genealogy.add(self.id[slots], np.full(k, -1, dtype=np.int64), 0)
+
+        if p.n_species > 1:
+            if p.species_init == "halves":
+                self.species[slots] = (self.x[slots] >= p.world_size / 2).astype(np.int8)
+            elif p.species_init == "mixed":
+                self.species[slots] = self.rng.integers(p.n_species, size=k).astype(np.int8)
+            else:
+                raise ValueError(f"unknown species_init: {p.species_init}")
 
         # Predators (drawn only when enabled, so runs without them are unchanged).
         npred = p.n_predators
@@ -231,11 +243,18 @@ class World:
         u = self.rng.random((idx.size, 5))
         ledger = np.zeros(K.N_LEDGER)
         self._log_n[0] = 0
+        seed = 0
+        if p.defense_enabled:
+            seed = int(self.rng.integers(2 ** 31))
+            self._slot_pos[:] = -1
+            self._slot_pos[idx] = np.arange(idx.size)
         K.interact(acting_k, idx, self.energy, self.alive, self.genome,
                    G.SHARE_W.start, G.ATTACK_W.start, G.TAG.start, p.tag_blind_share, p.attacks_enabled,
                    p.share_to_random, self._log_i, self._log_j, self._log_kind, self._log_n,
                    nbr_start, nbr, p.birth_threshold, p.share_cost, p.share_benefit,
-                   p.attack_cost, p.predation_efficiency, u, self._buf, ledger)
+                   p.attack_cost, p.predation_efficiency, u, self._buf, ledger,
+                   self.species, p.n_species == 1 or p.fights_within_species,
+                   p.defense_enabled, G.DEFEND_W.start, self._slot_pos, seed)
         self._record_events(idx)
         return {k: float(ledger[i]) for k, i in _LEDGER_KEYS.items()}
 
@@ -271,7 +290,7 @@ class World:
             r = self.metric_rng
             ri = idx[r.integers(idx.size, size=RANDOM_PAIRS_PER_STEP)]
             rj = idx[r.integers(idx.size, size=RANDOM_PAIRS_PER_STEP)]
-            keep = ri != rj
+            keep = (ri != rj) & (self.species[ri] == self.species[rj])  # baseline within species
             i = np.concatenate([i, ri[keep]])
             j = np.concatenate([j, rj[keep]])
             kind = np.concatenate([kind, np.full(keep.sum(), EV_RANDOM, dtype=np.int8)])
@@ -344,6 +363,7 @@ class World:
         self.age[kids] = -1  # becomes 0 after this step's ageing
         self.id[kids] = np.arange(self.next_id, self.next_id + k)
         self.parent_id[kids] = self.id[parents]
+        self.species[kids] = self.species[parents]
         self.alert[kids] = 0
         self.genealogy.add(self.id[kids], self.id[parents], self.step_count)
         self.next_id += k
@@ -406,6 +426,12 @@ class World:
         out["sim_attack"] = L["sim_attack"] / L["attacks"] if L.get("attacks") else nan
         out["donor_energy"] = L["donor_energy"] / L["shares"] if L.get("shares") else nan
         out["recipient_energy"] = L["recipient_energy"] / L["shares"] if L.get("shares") else nan
+        att = L.get("attacks", 0.0)
+        out["defend_rate"] = L.get("defenses", 0.0) / att if att else nan  # defenses per attack
+        out["sim_defend"] = L["sim_defend"] / L["defenses"] if L.get("defenses") else nan
+        if self.p.n_species > 1:
+            for s in range(self.p.n_species):
+                out[f"pop_s{s}"] = int((self.alive & (self.species == s)).sum())
         det = L.get("detections", 0.0)
         out["alarm_rate"] = L["alarms"] / det if det else nan  # calls per detection
         out["sim_warned"] = L["sim_warned"] / L["warned"] if L.get("warned") else nan

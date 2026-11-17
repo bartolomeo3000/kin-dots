@@ -56,6 +56,15 @@ class Params:
                                         # map instead of the neighbour met (same ecology, no kinship)
     weight_clip: float = 10.0           # decision/movement weights are kept in [-clip, clip]
 
+    # --- species (two competing species) ---
+    n_species: int = 1                  # 2: agents carry an inherited, never-mutating species label
+    species_init: str = "halves"        # "halves": species 0 on the left half, 1 on the right;
+                                        # "mixed": random
+    fights_within_species: bool = False # with 2 species: False = attacks only on the other species
+                                        # (control: True). Sharing is always within species.
+    defense_enabled: bool = False       # an attacked agent's neighbours (same species) may take
+                                        # the fight on themselves (DEFEND genes)
+
     # --- predators (non-evolving hunters) and alarm calls ---
     n_predators: int = 0                # 0 disables predators
     predator_speed: float = 0.5         # distance per step

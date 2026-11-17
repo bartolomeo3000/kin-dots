@@ -17,16 +17,20 @@ MOVE_STRANGER = 11
 # Alarm call when a predator is detected:
 # p = sigmoid(w0 + w1*mean tag similarity of neighbours + w2*my_energy + w3*n_neighbours/10)
 ALARM_W = slice(12, 16)
+# Defending a neighbour attacked by another species (taking the fight on oneself):
+# p = sigmoid(w0 + w1*tag similarity to the victim + w2*my_energy + w3*attacker's energy)
+DEFEND_W = slice(16, 20)
 # Heritable colour tag (RGB in [0, 1]), mutated independently of behaviour
-TAG = slice(16, 19)
+TAG = slice(20, 23)
 
-N_GENES = 19
+N_GENES = 23
 
 GENE_NAMES = (
     [f"share_w{i}" for i in range(4)]
     + [f"attack_w{i}" for i in range(4)]
     + ["harvest", "move_food", "move_kin", "move_stranger"]
     + [f"alarm_w{i}" for i in range(4)]
+    + [f"defend_w{i}" for i in range(4)]
     + ["tag_r", "tag_g", "tag_b"]
 )
 assert len(GENE_NAMES) == N_GENES
@@ -36,7 +40,7 @@ assert len(GENE_NAMES) == N_GENES
 BEHAVIOUR_GENES = np.arange(0, TAG.start)
 
 # Genes that are decision/movement weights (clipped to [-weight_clip, weight_clip]).
-WEIGHT_GENES = np.r_[0:8, MOVE_FOOD, MOVE_KIN, MOVE_STRANGER, 12:16]
+WEIGHT_GENES = np.r_[0:8, MOVE_FOOD, MOVE_KIN, MOVE_STRANGER, 12:20]
 
 
 def propensity(g: np.ndarray, which: slice, sim: float = 1.0,
@@ -60,6 +64,7 @@ def founder_genomes(n: int, rng: np.random.Generator, weight_sd: float = 0.0) ->
     g[:, SHARE_W] = [-2.0, 0.0, 0.0, 0.0]   # p(share) ~ 12% per encounter
     g[:, ATTACK_W] = [-3.0, 0.0, 0.0, 0.0]  # p(attack) ~ 5% per encounter
     g[:, ALARM_W] = [-2.0, 0.0, 0.0, 0.0]   # p(alarm | predator detected) ~ 12%
+    g[:, DEFEND_W] = [-3.0, 0.0, 0.0, 0.0]  # p(defend a neighbour) ~ 5% per candidate
     g[:, HARVEST] = 0.5
     g[:, MOVE_FOOD] = 1.0
     if weight_sd > 0:
