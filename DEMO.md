@@ -46,7 +46,8 @@ Prawie każdy odpowie, że gen „zabij się” szybko wyginie.
   - W świecie z darem dla sąsiada wiele rodów współistnieje w mozaice, która zmienia się powoli. Rody przeżywają zimę na miejscu i co roku odradzają się w tym samym rejonie.
   - W świecie kontrolnym zimowe krachy wybijają większość rodów. Zostaje kilka wielkich, które co roku na nowo zalewają opustoszałe tereny.
   - Liczbowo: kropka żyje średnio (mediana) **11.6** jednostki od miejsca, w którym rok wcześniej żył jej przodek. W świecie kontrolnym to **21.1** (lata 25–150).
-  - Szybsza wersja, z klatką co 150 kroków, w której widać też pory roku: `docs/demo_tags.gif`.
+  - Pod każdą mapą są dwa paski. **„dots by colour hue now”** to histogram odcieni kolorów w danej chwili (pełny słupek = 15% kropek). **„hue over time”** to historia odcieni od startu: oś x to czas, oś y odcień, a jasność to liczba kropek. Trwałe rody widać jako poziome pasy. Po lewej przez 150 lat utrzymuje się szeroka „tęcza” wielu rodów. Po prawej pojedyncze rody zalewają resztę i znikają, a około 60. roku jeden fioletowy ród ma ~40% populacji.
+  - Szybsza wersja, z klatką co 150 kroków, w której widać też pory roku: `docs/demo_tags.gif`. Ma ~40 MB, więc nie jest w gicie. Odtworzysz ją komendą poniżej albo, bez ponownego liczenia, z zapisanych danych: `analysis/tag_movie.py docs/demo_tags.gif docs/demo_tags_yearly.gif cache`.
 
 - **Samobójstwo bez daru** (kropka umiera, a jej energia przepada) daje mieszane wyniki: 61%, 44% i 6% śmierci w trzech przebiegach. Liczy się więc *dar dla krewnych*, a nie samo zwolnienie miejsca.
 
