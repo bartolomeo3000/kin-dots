@@ -159,5 +159,6 @@ The tests cover determinism (same seed, same run), exact energy and food bookkee
 - `kin_dots/experiments/run.py`: headless runner.
 - `kin_dots/experiments/sweep.py`: many conditions and seeds in parallel, comparison table.
 - `analysis/`: scripts behind the figures in `docs/`.
+- `evolife/KinSacrifice/`: the demo as an Evolife app (standalone).
 - `configs/`: parameter presets.
 - `tests/`: determinism, energy and food balance, state consistency.
