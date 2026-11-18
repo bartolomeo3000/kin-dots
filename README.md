@@ -64,6 +64,8 @@ A clear difference shows after ~10,000 steps, a few minutes at speed 64. The win
 2. Copy the `KinSacrifice` folder into Evolife's `Apps/` folder.
 3. Launch it the Evolife way: `./starter` on macOS and Linux, `Starter.bat` on Windows.
 
+The starter opens Evolife's configuration editor, where every parameter of the model can be changed with a click, each with a short description. Examples: how harsh the winter is, how fast the dots move, how far from its parent a child is born, and how much of a gift reaches the recipient. This makes it easy to test whether self-sacrifice still evolves when the world is different. The control world (gift to a stranger) runs next to it with the same settings.
+
 The Python that runs Evolife needs PyQt, numpy and Pillow. The app's `Help.txt` explains what is on screen and the keys.
 
 ## Figures and analyses
