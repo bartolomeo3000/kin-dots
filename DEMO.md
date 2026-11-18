@@ -32,7 +32,9 @@ Prawie każdy odpowie, że gen „zabij się” szybko wyginie.
 | dar trafia do losowej kropki z mapy (kontrola) | ~5% | 5–10% (3 z 3) |
 
 **Co dokładnie wyewoluowało:**
-- Ewoluuje reguła **„poświęcam się, kiedy jestem słaby”** (gen `b` spada do ≈ −3.5). W połowie przebiegu reguła przez chwilę idzie w przeciwną stronę: poświęcają się raczej najedzeni (środkowy wykres).
+- Ewoluuje reguła **„poświęcam się, kiedy jestem słaby”** (gen `b` spada do ≈ −3.5). Przez pierwsze ~15 tys. kroków reguła idzie w przeciwną stronę: poświęcają się raczej najedzeni (środkowy wykres).
+- **Gen `a`** (ogólna skłonność) rośnie przez cały przebieg z −9 do ≈ −3.5; w kontroli stoi w miejscu (~ −8.7). Od ok. kroku 12 tys. kropka ze średnią energią poświęca się przy spotkaniu z mniej więcej stałą szansą ~0.5%. Dalej zmienia się już głównie to, *kto* się poświęca: po 30 tys. kroków kropka z energią 5 robi to z szansą ~1.5%, a prawie gotowa do rozmnożenia (19) ~0.16%, czyli 10× rzadziej. Po 30 tys. kroków ten proces jeszcze się nie zatrzymał (`analysis/sacrifice_genes.py`, 3 przebiegi).
+  ![Gen a i szansa na poświęcenie w zależności od energii](docs/demo_sacrifice_genes.png)
 - Kropki, które się poświęcają, **nie są na skraju śmierci**. Mają ~9.6 energii przy średniej ~12.5, a śmierć głodowa przychodzi dopiero przy 0. Tracą więc realną szansę na przeżycie i potomstwo.
 - **Efekt uboczny, którego nikt nie zaprojektował:** w świecie kontrolnym populacja wpada w cykl dwuletni, czyli rok obfitości, potem rok krachu (prawy wykres, średnia z każdej pory roku skacze między ~1500 a ~3500). W świecie z poświęceniem ten cykl wygasa, a populacja stabilizuje się na ~4300.
   ![Liczebność populacji krok po kroku](docs/demo_population.png)
