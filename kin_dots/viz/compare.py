@@ -33,6 +33,7 @@ VIEW = 540          # world view size in pixels (recomputed to fit the screen in
 GAP = 16
 PLOT_H = 170
 TEXT_H = 72
+INFO_H = 24         # help line under the plots
 BG = (18, 18, 22)
 FG = (225, 225, 230)
 MUTED = (140, 140, 150)
@@ -69,6 +70,7 @@ class Side:
     def reset(self):
         self.world = World(self.params)
         self.hist = []
+        self.pop_hist = []  # raw population every RECORD_EVERY steps (not averaged)
         # plotted value = mean of the metric over the last full season (or 200 steps)
         self.window = deque(maxlen=self.params.season_period or 200)
 
@@ -80,8 +82,33 @@ class Side:
         v = _metric(w, metric)
         if v == v:
             self.window.append(v)
-        if len(self.window) == self.window.maxlen and w.step_count % RECORD_EVERY == 0:
-            self.hist.append(float(np.mean(self.window)))
+        if w.step_count % RECORD_EVERY == 0:
+            self.pop_hist.append(w.population)
+            if len(self.window) == self.window.maxlen:
+                self.hist.append(float(np.mean(self.window)))
+
+
+def draw_series(screen, font, x0, y0, w, h, series, title, x_len=None):
+    """Line plot of several series [(values, colour)] sharing a y axis from 0, whole history
+    squeezed into the width. x_len: number of samples the x axis spans (default: longest)."""
+    pygame.draw.rect(screen, (40, 40, 48), (x0, y0, w, h), 1)
+    screen.blit(font.render(title, True, MUTED), (x0 + 6, y0 + 4))
+    vals = [v for vs, _ in series for v in vs if v == v]
+    if not vals:
+        return
+    hi = max(vals) * 1.1 or 1.0
+    n_max = x_len or max(len(vs) for vs, _ in series)
+    for vs, col in series:
+        if len(vs) < 2:
+            continue
+        v = np.asarray(vs, dtype=float)
+        stride = max(1, len(v) // w)
+        v = v[::stride]
+        xs = np.arange(len(v)) * stride * (w - 1) / max(n_max - 1, 1)
+        pts = [(x0 + int(x), y0 + h - 4 - int(val / hi * (h - 28))) for x, val in zip(xs, v) if val == val]
+        if len(pts) >= 2:
+            pygame.draw.lines(screen, col, False, pts, 2)
+    screen.blit(font.render(f"{hi / 1.1:.3g}", True, MUTED), (x0 + w - 60, y0 + 4))
 
 
 def draw_world(screen, side: Side, x0: int, y0: int, mode: str, show_food: bool, show_gifts: bool = True):
@@ -163,10 +190,10 @@ def main(argv=None) -> int:
         info = pygame.display.Info()
         if info.current_w > 0 and info.current_h > 0:
             avail_h = info.current_h - 130  # menu bar, title bar, dock
-            VIEW = max(200, min(560, avail_h - (3 * GAP + TEXT_H + PLOT_H + GAP),
+            VIEW = max(200, min(560, avail_h - (3 * GAP + TEXT_H + PLOT_H + INFO_H),
                                 (info.current_w - 3 * GAP) // 2))
     W_ = 2 * VIEW + 3 * GAP
-    H_ = GAP + TEXT_H + VIEW + GAP + PLOT_H + GAP
+    H_ = GAP + TEXT_H + VIEW + GAP + PLOT_H + INFO_H + GAP
     screen = pygame.display.set_mode((W_, H_))
     font = pygame.font.SysFont("menlo,dejavusansmono,monospace", 15)
     big = pygame.font.SysFont("menlo,dejavusansmono,monospace", 18, bold=True)
@@ -219,32 +246,25 @@ def main(argv=None) -> int:
             screen.blit(font.render(f"{args.metric} {cur:.3f}", True, col), (x0, GAP + 46))
             draw_world(screen, s, x0, GAP + TEXT_H, COLOR_MODES[mode], show_food, show_gifts)
 
-        # shared plot
+        # plots: chosen metric (season mean) and raw population, both for the whole run
         py0 = GAP + TEXT_H + VIEW + GAP
-        pw = W_ - 2 * GAP
-        pygame.draw.rect(screen, (40, 40, 48), (GAP, py0, pw, PLOT_H), 1)
-        vals = [v for s in sides for v in s.hist]
-        if vals:
-            hi = max(vals) * 1.1 or 1.0
-            n_max = max(len(s.hist) for s in sides)
-            for k, s in enumerate(sides):
-                if len(s.hist) < 2:
-                    continue
-                h = np.asarray(s.hist)
-                stride = max(1, len(h) // pw)
-                h = h[::stride]
-                xs = np.arange(len(h)) * stride * (pw - 1) / max(n_max - 1, 1)
-                pts = [(GAP + int(x), py0 + PLOT_H - 4 - int(v / hi * (PLOT_H - 30))) for x, v in zip(xs, h)]
-                pygame.draw.lines(screen, LEFT_C if k == 0 else RIGHT_C, False, pts, 2)
-            steps = n_max * RECORD_EVERY
-            screen.blit(font.render(f"{args.metric} (mean over the last season): whole run, {steps} steps",
-                                    True, MUTED),
-                        (GAP + 6, py0 + 4))
+        half = (W_ - 3 * GAP) // 2
+        n_pop = max(len(s.pop_hist) for s in sides)
+        steps = n_pop * RECORD_EVERY
+        cols = (LEFT_C, RIGHT_C)
+        # the metric starts one season late: pad it so both plots share the step axis
+        draw_series(screen, font, GAP, py0, half, PLOT_H,
+                    [([float("nan")] * (len(s.pop_hist) - len(s.hist)) + s.hist, c)
+                     for s, c in zip(sides, cols)],
+                    f"{args.metric} (season mean)", x_len=n_pop)
+        draw_series(screen, font, 2 * GAP + half, py0, half, PLOT_H,
+                    [(s.pop_hist, c) for s, c in zip(sides, cols)],
+                    f"population, step 0..{steps}")
         st = sum(a for a, _ in sim_rate)
         rate = st / max(sum(b for _, b in sim_rate), 1e-9) if st else 0.0
         info = (f"~{rate:.0f} steps/s (max {speed}/frame)  colour: {COLOR_MODES[mode]}  |  "
                 f"SPACE pause  UP/DOWN  C colour  F food  G gifts  R")
-        screen.blit(font.render(info, True, MUTED), (GAP + 6, py0 + PLOT_H - 22))
+        screen.blit(font.render(info, True, MUTED), (GAP + 6, py0 + PLOT_H + 4))
         pygame.display.flip()
         clock.tick(60)
         frame += 1
