@@ -1,0 +1,498 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="claude:viewport-fit-sides" content="cover">
+<title>Dots That Give Their Lives</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght,SOFT@0,9..144,300..800,0..100;1,9..144,300..800,0..100&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: a fixed 1920x1080 stage scaled to the window; one idea per slide, live canvases as the main visuals.
+   Single deliberate dark look: a night-time field, amber = gift to a neighbour, cyan = gift to a stranger, ember = the sacrifice. */
+:root {
+  --ink: #0b1112;
+  --ink-2: #111a1b;
+  --ink-3: #182425;
+  --rule: #253434;
+  --paper: #ece5d6;
+  --muted: #8e9b95;
+  --kin: #f3b54a;
+  --stranger: #55c6da;
+  --ember: #ff6b3d;
+  --moss: #3d7a4c;
+  --font-display: "Fraunces", "Iowan Old Style", Georgia, serif;
+  --font-body: "Inter", "Helvetica Neue", Arial, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
+  color-scheme: dark;
+}
+html, body { height: 100%; }
+body {
+  background: var(--ink);
+  color: var(--paper);
+  font-family: var(--font-body);
+  overflow: hidden;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 0;
+  box-sizing: border-box;
+}
+#viewport { position: relative; width: 100%; height: 100%; overflow: hidden; }
+#stage {
+  position: absolute; left: 50%; top: 50%;
+  width: 1920px; height: 1080px;
+  transform-origin: 0 0;
+  background: var(--ink);
+  overflow: hidden;
+}
+#bg { position: absolute; inset: 0; width: 1920px; height: 1080px; }
+
+/* ---------- slides ---------- */
+.slide {
+  position: absolute; inset: 0;
+  padding: 120px 140px;
+  box-sizing: border-box;
+  display: none;
+  flex-direction: column;
+  gap: 36px;
+}
+.slide.active, .slide.leaving { display: flex; }
+.slide.active { z-index: 2; animation: slide-in 1000ms cubic-bezier(.7, 0, .2, 1) both; }
+.slide.leaving { z-index: 1; animation: slide-out 800ms cubic-bezier(.6, 0, .4, 1) both; pointer-events: none; }
+.slide.active.back { animation-name: slide-in-back; }
+@keyframes slide-in {
+  from { clip-path: circle(0% at var(--ox, 50%) var(--oy, 50%)); transform: scale(1.06); filter: blur(10px) brightness(1.6); }
+  to   { clip-path: circle(140% at var(--ox, 50%) var(--oy, 50%)); transform: none; filter: none; }
+}
+@keyframes slide-in-back {
+  from { opacity: 0; transform: translateX(-80px) scale(.98); filter: blur(8px); }
+  to   { opacity: 1; transform: none; filter: none; }
+}
+@keyframes slide-out {
+  from { opacity: 1; transform: none; filter: none; }
+  to   { opacity: 0; transform: scale(.92); filter: blur(14px); }
+}
+
+/* staged entrance of the elements of the current slide */
+.slide.active [data-a] { animation: rise 900ms cubic-bezier(.2, .8, .2, 1) both; animation-delay: calc(var(--d, 0) * 1ms + 420ms); }
+.slide.active [data-a="fade"] { animation-name: fade; }
+.slide.active [data-a="pop"] { animation-name: pop; animation-duration: 1100ms; }
+.slide.active [data-a="blur"] { animation-name: unblur; animation-duration: 1400ms; }
+@keyframes rise { from { opacity: 0; transform: translateY(46px); } to { opacity: 1; transform: none; } }
+@keyframes fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes pop { 0% { opacity: 0; transform: scale(.6); } 60% { opacity: 1; transform: scale(1.04); } 100% { opacity: 1; transform: none; } }
+@keyframes unblur { from { opacity: 0; filter: blur(24px); letter-spacing: .08em; } to { opacity: 1; filter: none; } }
+
+/* click-by-click reveals */
+.frag { opacity: 0; transform: translateY(30px); filter: blur(6px); transition: opacity 700ms ease, transform 800ms cubic-bezier(.2, .8, .2, 1), filter 700ms ease; }
+.frag.on { opacity: 1; transform: none; filter: none; }
+
+/* ---------- type ---------- */
+.eyebrow { font-family: var(--font-mono); font-size: 24px; letter-spacing: .16em; text-transform: uppercase; color: var(--muted); }
+h1, h2, h3 { margin: 0; font-family: var(--font-display); font-weight: 400; text-wrap: balance; }
+h1 { font-size: 168px; line-height: .92; letter-spacing: -.035em; font-variation-settings: "opsz" 144, "SOFT" 60; }
+h2 { font-size: 84px; line-height: 1; letter-spacing: -.02em; font-variation-settings: "opsz" 120, "SOFT" 40; }
+h3 { font-size: 40px; line-height: 1.1; font-variation-settings: "opsz" 48; }
+p { margin: 0; }
+.lead { font-size: 38px; line-height: 1.38; color: var(--paper); max-width: 1180px; text-wrap: pretty; }
+.body { font-size: 30px; line-height: 1.45; color: #cfc8b9; text-wrap: pretty; }
+.small { font-size: 24px; line-height: 1.4; color: var(--muted); }
+.mono { font-family: var(--font-mono); }
+em { font-style: italic; font-variation-settings: "opsz" 144, "SOFT" 100; }
+.kin { color: var(--kin); }
+.str { color: var(--stranger); }
+.ember { color: var(--ember); }
+.grow { flex: 1; min-height: 0; }
+.row { display: flex; gap: 48px; }
+.col { display: flex; flex-direction: column; gap: 24px; }
+
+/* ---------- chrome ---------- */
+#progress { position: absolute; left: 0; bottom: 0; height: 6px; width: 1920px; background: rgba(255,255,255,.04); z-index: 10; }
+#progress i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, var(--kin), var(--ember)); transition: width 900ms cubic-bezier(.2,.8,.2,1); }
+#counter { position: absolute; right: 56px; bottom: 34px; z-index: 10; font-family: var(--font-mono); font-size: 22px; color: var(--muted); letter-spacing: .1em; }
+#hint { position: absolute; left: 56px; bottom: 34px; z-index: 10; font-family: var(--font-mono); font-size: 22px; color: var(--muted); opacity: .8; transition: opacity 1s; }
+#notes {
+  position: absolute; left: 50%; bottom: 70px; transform: translateX(-50%); width: 1500px; z-index: 20;
+  background: rgba(17, 26, 27, .94); border: 1px solid var(--rule); border-radius: 18px; padding: 26px 34px;
+  font-size: 28px; line-height: 1.45; color: var(--paper); box-shadow: 0 30px 80px rgba(0,0,0,.5);
+}
+#notes b { font-family: var(--font-mono); font-weight: 500; font-size: 20px; letter-spacing: .14em; color: var(--muted); display: block; margin-bottom: 8px; }
+#navbtns { position: absolute; right: 230px; bottom: 22px; z-index: 10; display: flex; gap: 10px; }
+button.nav { width: 52px; height: 52px; border-radius: 50%; border: 1px solid var(--rule); background: rgba(17,26,27,.7); color: var(--paper); font-size: 30px; line-height: 1; cursor: pointer; }
+button.nav:hover { border-color: var(--muted); }
+button.ctl {
+  font-family: var(--font-mono); font-size: 22px; color: var(--paper); background: var(--ink-3);
+  border: 1px solid var(--rule); border-radius: 999px; padding: 12px 24px; cursor: pointer; letter-spacing: .04em;
+}
+button.ctl[aria-pressed="true"] { background: var(--paper); color: var(--ink); border-color: var(--paper); }
+button.ctl:focus-visible, button.nav:focus-visible { outline: 3px solid var(--kin); outline-offset: 3px; }
+
+/* ---------- slide 1: title ---------- */
+#s-title { justify-content: flex-end; padding-bottom: 170px; }
+#s-title canvas { position: absolute; inset: 0; width: 1920px; height: 1080px; }
+#s-title .veil { position: absolute; inset: 0; background: radial-gradient(120% 90% at 20% 100%, rgba(11,17,18,.92) 20%, rgba(11,17,18,.35) 60%, rgba(11,17,18,0) 85%); }
+#s-title > *:not(canvas):not(.veil) { position: relative; }
+#s-title h1 em { color: var(--ember); }
+
+/* ---------- slide 2: hook ---------- */
+#s-hook { justify-content: center; gap: 44px; }
+#s-hook .line { font-family: var(--font-display); font-size: 92px; line-height: 1.05; letter-spacing: -.02em; font-variation-settings: "opsz" 144, "SOFT" 50; max-width: 1600px; }
+#s-hook .line.dim { color: #6f7a75; }
+
+/* ---------- slide 3: torus ---------- */
+#s-torus .split { display: grid; grid-template-columns: 720px 1fr; gap: 40px; flex: 1; min-height: 0; }
+#torus { width: 100%; height: 100%; display: block; }
+.stat-row { display: flex; gap: 44px; margin-top: 18px; }
+.stat b { display: block; font-family: var(--font-display); font-weight: 400; font-size: 64px; letter-spacing: -.02em; font-variation-settings: "opsz" 144; }
+.stat span { font-family: var(--font-mono); font-size: 20px; color: var(--muted); letter-spacing: .08em; text-transform: uppercase; }
+.torus-phase { font-family: var(--font-mono); font-size: 24px; color: var(--muted); letter-spacing: .1em; }
+
+/* ---------- slide 4: rules ---------- */
+.tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 28px; flex: 1; min-height: 0; }
+.tile { background: var(--ink-2); border: 1px solid var(--rule); border-radius: 22px; padding: 26px; display: flex; flex-direction: column; gap: 18px; min-width: 0; }
+.tile canvas { width: 100%; height: 330px; border-radius: 14px; background: #0a0f10; display: block; }
+.tile .meta { font-family: var(--font-mono); font-size: 21px; color: var(--kin); letter-spacing: .06em; margin-top: auto; }
+
+/* ---------- slide 5: the option ---------- */
+#s-option .split { display: grid; grid-template-columns: 1fr 760px; gap: 70px; flex: 1; min-height: 0; align-items: center; }
+.formula { font-family: var(--font-display); font-size: 74px; letter-spacing: -.01em; font-variation-settings: "opsz" 144; white-space: nowrap; }
+.formula .g { font-style: italic; color: var(--kin); }
+.chips { display: flex; flex-direction: column; gap: 16px; }
+.chip { display: flex; gap: 20px; align-items: baseline; font-size: 28px; color: #cfc8b9; }
+.chip b { font-family: var(--font-mono); font-weight: 500; color: var(--paper); min-width: 64px; }
+#gift { width: 760px; height: 760px; border-radius: 50%; display: block; }
+
+/* ---------- slide 6: missing ---------- */
+.nots { display: grid; grid-template-columns: 1fr 1fr; gap: 26px 70px; margin-top: 20px; }
+.not { font-family: var(--font-display); font-size: 62px; letter-spacing: -.015em; font-variation-settings: "opsz" 120; position: relative; width: fit-content; color: #b9b2a3; }
+.not::after { content: ""; position: absolute; left: -6px; right: -6px; top: 54%; height: 5px; background: var(--ember); transform-origin: left; transform: scaleX(0); }
+.slide.active .not::after { animation: strike 600ms cubic-bezier(.7,0,.3,1) both; animation-delay: calc(var(--d, 0) * 1ms + 900ms); }
+@keyframes strike { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+.verdict { font-family: var(--font-display); font-size: 70px; font-style: italic; margin-top: auto; font-variation-settings: "opsz" 144, "SOFT" 100; }
+
+/* ---------- slide 7: two worlds ---------- */
+.worlds { display: grid; grid-template-columns: 1fr 1fr; gap: 56px; flex: 1; min-height: 0; }
+.world { display: grid; grid-template-columns: 380px 1fr; gap: 34px; align-items: center; }
+.world canvas { width: 380px; height: 380px; border-radius: 20px; display: block; }
+.world h3 { margin-bottom: 14px; }
+.tag-only { font-family: var(--font-mono); font-size: 22px; letter-spacing: .12em; text-transform: uppercase; }
+
+/* ---------- slide 8: question ---------- */
+#s-question { justify-content: center; }
+#s-question .q1 { font-family: var(--font-display); font-size: 70px; line-height: 1.1; max-width: 1500px; color: #c9c2b2; font-variation-settings: "opsz" 120; }
+#s-question .q2 { font-family: var(--font-display); font-size: 150px; line-height: 1; letter-spacing: -.03em; font-variation-settings: "opsz" 144, "SOFT" 80; margin-top: 30px; }
+#s-question .q2 .more { color: var(--kin); }
+#s-question .q2 .less { color: var(--stranger); }
+
+/* ---------- slide 9: live ---------- */
+#s-live { padding: 70px 110px 90px; gap: 22px; }
+.live-head { display: flex; align-items: baseline; justify-content: space-between; gap: 30px; }
+.live-head h2 { font-size: 64px; }
+.live-grid { display: grid; grid-template-columns: 560px 560px 1fr; gap: 40px; flex: 1; min-height: 0; }
+.live-world { display: flex; flex-direction: column; gap: 14px; }
+.live-world canvas { width: 560px; height: 560px; border-radius: 16px; display: block; background: #070b0c; }
+.live-world .lbl { display: flex; justify-content: space-between; align-items: baseline; font-family: var(--font-mono); font-size: 22px; }
+.live-big { font-family: var(--font-display); font-size: 92px; line-height: 1; letter-spacing: -.02em; font-variant-numeric: tabular-nums; font-variation-settings: "opsz" 144; }
+.live-side { display: flex; flex-direction: column; gap: 22px; min-width: 0; }
+#live-chart { width: 100%; height: 330px; display: block; }
+.controls { display: flex; flex-wrap: wrap; gap: 12px; }
+.clock { font-family: var(--font-mono); font-size: 26px; color: var(--paper); letter-spacing: .05em; }
+.season-bar { height: 10px; border-radius: 6px; background: var(--ink-3); overflow: hidden; }
+.season-bar i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, #7fcf8a, #e7d27a, #6a8db8); }
+
+/* ---------- chart slides ---------- */
+.chart-split { display: grid; grid-template-columns: 1fr 470px; gap: 60px; flex: 1; min-height: 0; }
+.chart-split canvas { width: 100%; height: 100%; display: block; }
+.bignum { font-family: var(--font-display); font-weight: 400; font-size: 200px; line-height: .9; letter-spacing: -.045em; font-variant-numeric: tabular-nums; font-variation-settings: "opsz" 144, "SOFT" 30; }
+.bignum.mid { font-size: 132px; }
+.numcap { font-size: 26px; color: #cfc8b9; line-height: 1.4; }
+.legend { display: flex; gap: 34px; font-family: var(--font-mono); font-size: 22px; color: var(--muted); }
+.legend i { display: inline-block; width: 30px; height: 5px; border-radius: 3px; vertical-align: middle; margin-right: 12px; }
+
+/* ---------- slide 12: Hamilton ---------- */
+.ham { font-family: var(--font-display); font-size: 210px; letter-spacing: -.03em; line-height: 1; text-align: center; font-variation-settings: "opsz" 144, "SOFT" 30; }
+.ham span { display: inline-block; }
+.ham .r { color: var(--kin); font-style: italic; }
+.terms { display: grid; grid-template-columns: repeat(3, 1fr); gap: 30px; }
+.term { background: var(--ink-2); border: 1px solid var(--rule); border-radius: 22px; padding: 28px 30px; display: flex; flex-direction: column; gap: 12px; }
+.term .sym { font-family: var(--font-display); font-size: 66px; line-height: 1; font-style: italic; }
+.vs { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; }
+.vs div { border-radius: 18px; padding: 22px 28px; font-size: 28px; display: flex; justify-content: space-between; align-items: center; gap: 20px; }
+.vs .yes { background: rgba(243, 181, 74, .12); border: 1px solid rgba(243, 181, 74, .45); }
+.vs .no { background: rgba(85, 198, 218, .08); border: 1px solid rgba(85, 198, 218, .35); }
+.vs b { font-family: var(--font-mono); font-weight: 500; font-size: 26px; }
+
+/* ---------- slide 14: families ---------- */
+.fam-grid { display: grid; grid-template-columns: 500px 500px 1fr; gap: 56px; flex: 1; min-height: 0; }
+.fam { display: flex; flex-direction: column; gap: 12px; }
+.fam canvas.map { width: 500px; height: 500px; image-rendering: pixelated; border-radius: 16px; display: block; }
+.fam canvas.kymo { width: 500px; height: 78px; image-rendering: pixelated; border-radius: 8px; display: block; outline: 1px solid var(--rule); }
+
+/* ---------- slide 16: limits ---------- */
+.limits { display: grid; grid-template-columns: 1fr 1fr; gap: 30px 60px; margin-top: 10px; }
+.limit { border-top: 1px solid var(--rule); padding-top: 24px; display: flex; flex-direction: column; gap: 10px; }
+.limit h3 { font-size: 40px; }
+
+/* ---------- slide 17: close ---------- */
+#s-close { justify-content: center; align-items: flex-start; }
+#s-close canvas { position: absolute; inset: 0; width: 1920px; height: 1080px; }
+#s-close .veil { position: absolute; inset: 0; background: radial-gradient(90% 75% at 35% 50%, rgba(11,17,18,.94) 30%, rgba(11,17,18,.5) 65%, rgba(11,17,18,0) 90%); }
+#s-close > *:not(canvas):not(.veil) { position: relative; }
+#s-close .big { font-family: var(--font-display); font-size: 140px; line-height: .98; letter-spacing: -.035em; font-variation-settings: "opsz" 144, "SOFT" 60; max-width: 1500px; }
+#s-close .cmd { font-family: var(--font-mono); font-size: 34px; background: var(--ink-2); border: 1px solid var(--rule); border-radius: 14px; padding: 18px 28px; color: var(--kin); }
+
+@media (prefers-reduced-motion: reduce) {
+  .slide.active, .slide.leaving, .slide.active [data-a], .slide.active .not::after { animation-duration: 1ms !important; animation-delay: 0ms !important; }
+  .frag { transition: none; }
+}
+</style>
+
+<div id="viewport">
+  <div id="stage" role="region" aria-roledescription="slide deck" aria-label="Dots That Give Their Lives">
+    <canvas id="bg" aria-hidden="true"></canvas>
+
+    <!-- 1 -->
+    <section class="slide" id="s-title" data-notes="Introduce the setup: a toy world of dots that eat, split and die. They can also give all their energy away and die. Nothing in the rules mentions family. The question for the next 15 minutes: why does that suicidal option end up being how most of them die?">
+      <canvas id="title-canvas" aria-hidden="true"></canvas>
+      <div class="veil"></div>
+      <div class="eyebrow" data-a="fade" style="--d:0">An evolution simulation · kin-dots</div>
+      <h1 data-a="blur" style="--d:150">Dots that give<br>their <em>lives</em></h1>
+      <p class="lead" data-a style="--d:600">Simple creatures, no rule about family, and yet most of them end up dying for a neighbour.</p>
+    </section>
+
+    <!-- 2 -->
+    <section class="slide" id="s-hook" data-notes="Set up the paradox. Natural selection keeps whatever gets copied into the next generation. A gene that makes its carrier die without offspring should be the first to go. Pause, then reveal that in this world it spreads.">
+      <div class="eyebrow" data-a="fade">The puzzle</div>
+      <p class="line" data-a style="--d:120">Evolution keeps whatever gets copied.</p>
+      <p class="line dim frag">So a gene that makes its carrier <em>die</em> should disappear.</p>
+      <p class="line frag">Here is a world where it <em class="ember">spreads</em> instead.</p>
+    </section>
+
+    <!-- 3 -->
+    <section class="slide" id="s-torus" data-notes="The map is a square of grass, 300 by 300 units, split into 75 by 75 grass cells. It has no edges: leave on the right and you come back on the left, the same for top and bottom. Gluing both pairs of edges gives the surface of a donut, a torus. The dots you see walking cross the seams without noticing.">
+      <div class="eyebrow" data-a="fade">The world</div>
+      <div class="split">
+        <div class="col" style="justify-content:center">
+          <h2 data-a style="--d:100">A square of grass with no edges</h2>
+          <p class="body" data-a style="--d:300">Walk off the right side and you come back on the left. The same goes for top and bottom. Glue both pairs of edges and the map becomes the surface of a donut: a <em>torus</em>.</p>
+          <div class="stat-row" data-a style="--d:500">
+            <div class="stat"><b>300²</b><span>units of space</span></div>
+            <div class="stat"><b>75²</b><span>grass cells</span></div>
+            <div class="stat"><b>2,500</b><span>dots at start</span></div>
+          </div>
+          <p class="torus-phase" id="torus-phase" aria-live="polite">flat map</p>
+        </div>
+        <div data-a="fade" style="--d:200; min-height:0"><canvas id="torus" aria-label="A square map of grass with dots rolls into a tube and then bends into a donut, while dots keep walking across its seams."></canvas></div>
+      </div>
+    </section>
+
+    <!-- 4 -->
+    <section class="slide" id="s-rules" data-notes="Four rules, the same in every world we will see. Grass regrows with the seasons: fast in summer, almost nothing in midwinter. Dots drift towards grass and eat it; just being alive costs energy. They die of hunger or of old age. With enough energy they split in two, and the child is born right next to the parent with slightly mutated genes. No sex, no mates.">
+      <div class="eyebrow" data-a="fade">The rules</div>
+      <h2 data-a style="--d:80">Four rules everyone follows</h2>
+      <div class="tiles">
+        <div class="tile" data-a style="--d:250"><canvas data-mini="seasons" aria-label="Grass cells brightening in summer and fading in winter"></canvas><h3>Seasons</h3><p class="small">Grass regrows fast in summer and almost not at all in midwinter.</p><div class="meta">1 year = 600 steps</div></div>
+        <div class="tile" data-a style="--d:380"><canvas data-mini="eat" aria-label="A dot drifting towards the greenest patch and eating it"></canvas><h3>Eat &amp; move</h3><p class="small">Dots drift slowly towards grass and eat it. Every step of life costs energy.</p><div class="meta">0.1 units per step</div></div>
+        <div class="tile" data-a style="--d:510"><canvas data-mini="die" aria-label="A dot fading as its energy runs out or its age reaches the limit"></canvas><h3>Die</h3><p class="small">Of hunger at zero energy, or of old age.</p><div class="meta">max age 300 steps</div></div>
+        <div class="tile" data-a style="--d:640"><canvas data-mini="split" aria-label="A dot splitting into two with a slightly different colour"></canvas><h3>Split</h3><p class="small">At 20 energy a dot splits in two. The child appears next to it, with slightly mutated genes.</p><div class="meta">asexual · no mates</div></div>
+      </div>
+    </section>
+
+    <!-- 5 -->
+    <section class="slide" id="s-option" data-notes="The one extra behaviour. Every step a dot meets a random neighbour within 4 units. It can hand over all of its energy and die; the neighbour receives 90 percent. How likely that is depends on two genes, a and b. a sets the overall urge, b says whether the urge goes up or down with the dot's own energy. At the start a is minus 9, so the chance is about one in eight thousand per step: practically never.">
+      <div class="eyebrow" data-a="fade">One extra option</div>
+      <div class="split">
+        <div class="col" style="gap:40px">
+          <h2 data-a style="--d:80">Give everything away, and die</h2>
+          <p class="body" data-a style="--d:240">Each step a dot meets a random neighbour. It may hand over all its energy and die. The neighbour receives 90% of it.</p>
+          <div class="formula" data-a="pop" style="--d:450">p = σ( <span class="g">a</span> + <span class="g">b</span> · E / 20 )</div>
+          <div class="chips" data-a style="--d:650">
+            <div class="chip"><b class="kin">a</b><span>overall urge to give everything away</span></div>
+            <div class="chip"><b class="kin">b</b><span>does the urge rise or fall with own energy E?</span></div>
+            <div class="chip"><b>start</b><span>a = −9, b = 0 → about 1 in 8,000 per step</span></div>
+          </div>
+        </div>
+        <canvas id="gift" data-a="fade" style="--d:200" aria-label="Animation: a dot meets a neighbour, pours its energy into it and fades away"></canvas>
+      </div>
+    </section>
+
+    <!-- 6 -->
+    <section class="slide" id="s-missing" data-notes="Equally important is what is missing. Dots cannot recognise relatives; there is no family colour they can see. They do not see who the neighbour is or how much energy it has. They get nothing back. They know nothing about groups or species. So no rule says help your family.">
+      <div class="eyebrow" data-a="fade">What the dots cannot do</div>
+      <h2 data-a style="--d:80">Nothing in the rules points at family</h2>
+      <div class="nots">
+        <div class="not" data-a style="--d:250">recognise relatives</div>
+        <div class="not" data-a style="--d:400">see who the neighbour is</div>
+        <div class="not" data-a style="--d:550">get anything back</div>
+        <div class="not" data-a style="--d:700">know about groups or species</div>
+      </div>
+      <p class="verdict" data-a style="--d:1500">No rule says “help your family”.</p>
+    </section>
+
+    <!-- 7 -->
+    <section class="slide" id="s-worlds" data-notes="The experiment: two worlds with identical rules and the same random seed. One difference only: where the energy of a sacrificing dot goes. On the left it goes to the neighbour the dot just met. Because children are born next to their parents and dots barely move, that neighbour is usually a close relative. On the right it goes to a random dot anywhere on the map, almost certainly a stranger. That is the control.">
+      <div class="eyebrow" data-a="fade">The experiment</div>
+      <h2 data-a style="--d:80">Two worlds, one difference</h2>
+      <div class="worlds">
+        <div class="world" data-a style="--d:260">
+          <canvas data-worlddemo="kin" aria-label="Families of same-coloured dots in patches; gifts are short lines between neighbours"></canvas>
+          <div><p class="tag-only kin">left world</p><h3 class="kin">Gift to a neighbour</h3><p class="body">The energy goes to the dot it just met. Children are born next to their parents and barely move, so that neighbour is usually family.</p></div>
+        </div>
+        <div class="world" data-a style="--d:420">
+          <canvas data-worlddemo="stranger" aria-label="The same patches of families; gifts are long lines to random dots across the map"></canvas>
+          <div><p class="tag-only str">right world · control</p><h3 class="str">Gift to a stranger</h3><p class="body">The energy goes to a random dot anywhere on the map. Same rules, same random seed.</p></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 8 -->
+    <section class="slide" id="s-question" data-notes="Ask the audience to commit to a guess. A sacrificing dot dies and has no more children, so intuition says the gene should vanish in both worlds. Take a show of hands before moving on.">
+      <p class="q1" data-a style="--d:0">A dot that sacrifices itself has no more children. After 30,000 steps, will there be</p>
+      <p class="q2" data-a="blur" style="--d:500"><span class="more">more</span> sacrifice, or <span class="less">less</span>?</p>
+    </section>
+
+    <!-- 9 -->
+    <section class="slide" id="s-live" data-notes="This is the actual model, running live in the browser, both worlds from the same start. Colour shows each dot's current urge to sacrifice: blue almost never, yellow and orange often. Speed it up and watch the left world. Within roughly ten to twenty thousand steps sacrifice becomes the most common way to die on the left, while the right stays low. Switch to family colours to see the patches of relatives.">
+      <div class="live-head">
+        <h2 data-a style="--d:0">Live: the real model, running now</h2>
+        <div class="clock" id="live-clock" aria-live="off">year 0 · step 0</div>
+      </div>
+      <div class="live-grid">
+        <div class="live-world" data-a style="--d:150">
+          <div class="lbl"><span class="kin">gift to a neighbour</span><span id="live-pop-0" class="small">pop —</span></div>
+          <canvas id="live-0" aria-label="Live view of the gift-to-a-neighbour world"></canvas>
+          <div class="lbl"><span class="small">deaths by sacrifice, last year</span><span class="live-big kin" id="live-share-0">—</span></div>
+        </div>
+        <div class="live-world" data-a style="--d:250">
+          <div class="lbl"><span class="str">gift to a stranger</span><span id="live-pop-1" class="small">pop —</span></div>
+          <canvas id="live-1" aria-label="Live view of the gift-to-a-stranger world"></canvas>
+          <div class="lbl"><span class="small">deaths by sacrifice, last year</span><span class="live-big str" id="live-share-1">—</span></div>
+        </div>
+        <div class="live-side" data-a style="--d:350">
+          <div class="season-bar" aria-hidden="true"><i id="live-season"></i></div>
+          <p class="small">Share of deaths that are self-sacrifice, each year</p>
+          <canvas id="live-chart" aria-label="Chart of the sacrifice share in both worlds, growing as the simulation runs"></canvas>
+          <div class="controls" role="group" aria-label="Simulation controls">
+            <button class="ctl" id="live-play" type="button" aria-pressed="true">pause</button>
+            <button class="ctl" data-speed="2" type="button" aria-pressed="false">slow</button>
+            <button class="ctl" data-speed="40" type="button" aria-pressed="true">fast</button>
+            <button class="ctl" data-speed="100000" type="button" aria-pressed="false">max</button>
+          </div>
+          <div class="controls" role="group" aria-label="Colour">
+            <button class="ctl" data-color="0" type="button" aria-pressed="true">urge to sacrifice</button>
+            <button class="ctl" data-color="1" type="button" aria-pressed="false">family colour</button>
+            <button class="ctl" id="live-reset" type="button">restart</button>
+          </div>
+          <p class="small">Dot colour: <span style="color:#5b7be0">blue</span> = almost never gives, <span class="kin">amber</span> → <span class="ember">ember</span> = often. White lines: this moment's gifts.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 10 -->
+    <section class="slide" id="s-result" data-notes="The recorded result, three runs per world, 30,000 steps each. On the left, sacrifice climbs from about 5 percent of deaths to about 70 percent, in every run. On the right it stays between 5 and 10 percent: the gene does not spread. Same rules, same seed; the only difference is who gets the energy.">
+      <div class="eyebrow" data-a="fade">Result · 3 runs per world · 30,000 steps</div>
+      <div class="chart-split">
+        <canvas id="chart-result" data-a="fade" style="--d:200" aria-label="Share of deaths that are self-sacrifice over 30,000 steps: rising to about 70 percent with gifts to neighbours, staying under 15 percent with gifts to strangers"></canvas>
+        <div class="col" style="justify-content:center; gap:40px">
+          <div data-a style="--d:500"><div class="bignum kin" data-count="70" data-suffix="%">70%</div><p class="numcap">of all deaths are self-sacrifice when the gift goes to a <span class="kin">neighbour</span></p></div>
+          <div data-a style="--d:800"><div class="bignum mid str">5–10%</div><p class="numcap">when it goes to a <span class="str">stranger</span>: the gene does not spread</p></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 11 -->
+    <section class="slide" id="s-evolved" data-notes="What exactly evolved. The curve shows the chance to sacrifice per encounter against the dot's own energy, as evolution goes on, on a log scale. At first nothing; then the urge grows, oddly first among well-fed dots; from about year 25 the curve flips. By the end a dot with energy 5 gives itself up ten times more often than one about to reproduce. The givers are not dying anyway: they have 9.6 energy on average against 12.5 in the population.">
+      <div class="eyebrow" data-a="fade">What evolved</div>
+      <h2 data-a style="--d:80">Give yourself up when you are <em>weak</em></h2>
+      <div class="chart-split">
+        <canvas id="chart-pe" data-a="fade" style="--d:200" aria-label="Chance to sacrifice against own energy, animated year by year: flat at first, later much higher for low-energy dots"></canvas>
+        <div class="col" style="justify-content:center; gap:34px">
+          <div data-a style="--d:500"><div class="bignum mid ember">1.5%</div><p class="numcap">per encounter at energy 5</p></div>
+          <div data-a style="--d:700"><div class="bignum mid" style="color:#cfc8b9">0.16%</div><p class="numcap">at energy 19, almost ready to split</p></div>
+          <p class="small" data-a style="--d:900">Givers are not dying anyway: 9.6 energy on average against 12.5 in the population. They give up a real chance of offspring.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 12 -->
+    <section class="slide" id="s-why" data-notes="Why. Selection does not favour the dot that dies; it favours the gene that makes it do it, because copies of that gene sit in the relatives who get the energy. Hamilton's rule: helping spreads when relatedness times the benefit to the recipient beats the cost to the giver. C is small for a weak dot in winter, which probably would not reach spring anyway. B is a big chunk of energy. And r is about 0.75 between neighbours on the left, about zero on the right. The two worlds differ only in r, and the outcome goes in opposite directions: a direct test of the inequality.">
+      <div class="eyebrow" data-a="fade">Why it happens</div>
+      <div class="ham" data-a="pop" style="--d:150" aria-label="r times B greater than C"><span class="r">r</span> · <span>B</span> &gt; <span>C</span></div>
+      <div class="terms">
+        <div class="term" data-a style="--d:450"><span class="sym kin">r</span><h3>relatedness</h3><p class="small">Giver and recipient share genes. Measured between neighbours: about 0.75.</p></div>
+        <div class="term" data-a style="--d:600"><span class="sym">B</span><h3>benefit</h3><p class="small">Offspring the recipient gains: several units of energy, a big step towards splitting or surviving winter.</p></div>
+        <div class="term" data-a style="--d:750"><span class="sym">C</span><h3>cost</h3><p class="small">Offspring the giver loses. Small for a weak dot in winter, which is why the weak give.</p></div>
+      </div>
+      <div class="vs" data-a style="--d:950">
+        <div class="yes"><span>gift to a <span class="kin">neighbour</span></span><b class="kin">r ≈ 0.75 · rB &gt; C</b></div>
+        <div class="no"><span>gift to a <span class="str">stranger</span></span><b class="str">r ≈ 0 · only the cost is left</b></div>
+      </div>
+    </section>
+
+    <!-- 13 -->
+    <section class="slide" id="s-pop" data-notes="A side effect nobody designed. In the control world the population falls into a two-year rhythm: a year of plenty, then a crash, often almost to zero in winter, and every run looks different. With gifts to neighbours, the rhythm disappears: every year looks the same, and the three runs almost overlap.">
+      <div class="eyebrow" data-a="fade">Side effect 1</div>
+      <h2 data-a style="--d:80">The population calms down</h2>
+      <div class="legend" data-a style="--d:200"><span><i style="background:var(--kin)"></i>gift to a neighbour</span><span><i style="background:var(--stranger)"></i>gift to a stranger</span><span>3 runs each · last 10 years · every step</span></div>
+      <canvas id="chart-pop" class="grow" data-a="fade" style="--d:300; width:100%" aria-label="Population over the last ten years of each run: regular yearly waves with gifts to neighbours, irregular two-year boom and bust with gifts to strangers"></canvas>
+    </section>
+
+    <!-- 14 -->
+    <section class="slide" id="s-fam" data-notes="Each dot also carries an inherited colour that drifts very slowly. The dots cannot see it; it is there for us. These are 150 years of family maps, one frame per year at the summer peak. On the left many families live side by side and survive winter on their own patch. On the right winter crashes wipe out most families, and a few survivors flood the empty map. The strips below show the colour mix over time: lasting vertical bands are lasting families.">
+      <div class="eyebrow" data-a="fade">Side effect 2 · 150 years, one frame per year</div>
+      <h2 data-a style="--d:80">Families stay home</h2>
+      <div class="fam-grid">
+        <div class="fam" data-a style="--d:250"><div class="lbl small"><span class="kin">gift to a neighbour</span></div><canvas class="map" id="fam-0" width="75" height="75" aria-label="Yearly map of family colours, gift to a neighbour: a stable mosaic of many families"></canvas><canvas class="kymo" id="kymo-0" aria-hidden="true"></canvas></div>
+        <div class="fam" data-a style="--d:400"><div class="lbl small"><span class="str">gift to a stranger</span></div><canvas class="map" id="fam-1" width="75" height="75" aria-label="Yearly map of family colours, gift to a stranger: a few families repeatedly take over"></canvas><canvas class="kymo" id="kymo-1" aria-hidden="true"></canvas></div>
+        <div class="col" style="justify-content:center; gap:30px; --d:600" data-a>
+          <p class="clock" id="fam-year">year 0</p>
+          <div><div class="bignum mid kin">11.6</div><p class="numcap">units from where your ancestor lived a year earlier</p></div>
+          <div><div class="bignum mid str">21.1</div><p class="numcap">in the control: winter crashes, then a few lineages spread</p></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 15 -->
+    <section class="slide" id="s-age" data-notes="Who dies, and at what age, after evolution has settled. On the left 70 percent of deaths are sacrifices and they happen at every age, most often early, because young dots have half their parent's energy and count as weak. Hunger nearly disappears. The mean age at death drops from 249 to 157 steps. On the right most dots die of hunger or reach the maximum age of 300.">
+      <div class="eyebrow" data-a="fade">Who dies, and how old · deaths after step 20,000</div>
+      <h2 data-a style="--d:80">Shorter lives, given away</h2>
+      <div class="legend" data-a style="--d:200"><span><i style="background:var(--ember)"></i>self-sacrifice</span><span><i style="background:#7c8681"></i>hunger</span><span><i style="background:#9b7fd1"></i>old age (300)</span></div>
+      <div class="worlds" style="gap:60px">
+        <div class="col" data-a style="--d:300"><canvas id="chart-age-0" style="width:100%;height:470px;display:block" aria-label="Age at death with gifts to neighbours: mostly sacrifice, spread over all ages"></canvas><p class="numcap"><span class="kin">gift to a neighbour</span> · mean age at death <b>157</b></p></div>
+        <div class="col" data-a style="--d:450"><canvas id="chart-age-1" style="width:100%;height:470px;display:block" aria-label="Age at death with gifts to strangers: hunger after age 100 and a large spike of old age at 300"></canvas><p class="numcap"><span class="str">gift to a stranger</span> · mean age at death <b>249</b></p></div>
+      </div>
+    </section>
+
+    <!-- 16 -->
+    <section class="slide" id="s-limits" data-notes="What the model does not show. Reproduction is asexual, so relatives are nearly clones; with sex, relatedness and the effect would be weaker. The world was tuned so the effect is clear; milder winters or faster dots weaken it to 40 to 60 percent of deaths, but always above the control. The first winters are a bottleneck. And B and C are described, not measured.">
+      <div class="eyebrow" data-a="fade">Fine print</div>
+      <h2 data-a style="--d:80">What this model does not show</h2>
+      <div class="limits">
+        <div class="limit" data-a style="--d:250"><h3>Clones, not siblings</h3><p class="body">Reproduction is asexual, so relatives are almost clones. With sex, relatedness is lower and the effect would be weaker.</p></div>
+        <div class="limit" data-a style="--d:400"><h3>A world tuned for clarity</h3><p class="body">Milder winters or faster dots weaken it to 40–60% of deaths, still well above the control. The control matters more than the number.</p></div>
+        <div class="limit" data-a style="--d:550"><h3>A risky start</h3><p class="body">Before sacrifice spreads, early winters can shrink the population to a few dozen. An unlucky seed can die out.</p></div>
+        <div class="limit" data-a style="--d:700"><h3>B and C, not measured</h3><p class="body">Relatedness is measured directly. Benefit and cost in offspring are described, not computed.</p></div>
+      </div>
+    </section>
+
+    <!-- 17 -->
+    <section class="slide" id="s-close" data-notes="The take-away: nobody here acts for the good of the species. Selection acts on genes, and in a world where neighbours are family, a gene for giving yourself up to a neighbour is a gene for helping copies of itself. Invite people to run it and change the parameters.">
+      <canvas id="close-canvas" aria-hidden="true"></canvas>
+      <div class="veil"></div>
+      <div class="eyebrow" data-a="fade">Take-away</div>
+      <p class="big" data-a="blur" style="--d:150">Selection acts on genes. Altruism is a <em class="ember">by-product</em>.</p>
+      <div class="row" data-a style="--d:700; align-items:center; margin-top:30px">
+        <span class="cmd">./demo.sh --set season_amplitude=0.7</span>
+        <span class="small">Run it yourself from the kin-dots repository, and change the world.</span>
+      </div>
+    </section>
+
+    <div id="navbtns"><button class="nav" id="nav-prev" type="button" aria-label="Previous slide">‹</button><button class="nav" id="nav-next" type="button" aria-label="Next slide">›</button></div>
+    <div id="hint">→ next · ← back · N notes · F full screen</div>
+    <div id="counter" aria-live="polite">01 / 17</div>
+    <div id="notes" hidden></div>
+    <div id="progress"><i></i></div>
+  </div>
+</div>
+
+<script src="assets/data.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="assets/deck.js"></script>

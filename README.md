@@ -6,6 +6,14 @@ An evolution simulation of dot agents that eat, reproduce and die, and that may 
 
 **Start here: [Dots that give their lives](dots-that-give-their-lives.md)**, an explainer for newcomers: the rules, the experiment, the result and why it happens.
 
+**Presentation:** [`presentation/index.html`](presentation/index.html) is an animated slide deck of the same story, made as a backdrop for a talk. It includes the model running live in the browser, a 3D torus and charts of the real runs. Open it in a browser (it needs internet for fonts and three.js). Keys: `→`/`←` to move, `N` for speaker notes, `F` for full screen. If your browser blocks local files, serve the folder:
+
+```bash
+python3 -m http.server 8000 --directory presentation   # then open http://localhost:8000
+```
+
+Its data comes from `analysis/deck_data.py`.
+
 ![The two demo worlds side by side](docs/demo_compare.png)
 
 **Other threads:**
