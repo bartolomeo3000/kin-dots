@@ -119,16 +119,18 @@ def _ramp(t):
     return (lo + (hi - lo) * t).astype(np.uint8)
 
 
-def _metric(w: World, metric: str) -> float:
-    """Cheap per-step metrics from the step ledger; anything else via the full census."""
+def _metric(w: World, metric: str) -> tuple[float, float]:
+    """This step's (numerator, denominator) of the metric. Ratios are summed over the window
+    before dividing, so a step with 1 death does not weigh as much as a step with 50 deaths.
+    Cheap ratios come from the step ledger; anything else is a census value with weight 1."""
     L = w.last
     if metric == "sacrifice_frac":
         died = L.get("deaths", 0) + L.get("killed", 0) + L.get("predated", 0) + L.get("sacrifices", 0)
-        return L.get("sacrifices", 0) / died if died else float("nan")
+        return float(L.get("sacrifices", 0)), float(died)
     if metric == "share_rate":
-        enc = L.get("encounters", 0)
-        return L.get("shares", 0) / enc if enc else float("nan")
-    return float(w.census().get(metric, float("nan")))
+        return float(L.get("shares", 0)), float(L.get("encounters", 0))
+    v = float(w.census().get(metric, float("nan")))
+    return (v, 1.0) if v == v else (0.0, 0.0)
 
 
 class Side:
@@ -143,17 +145,23 @@ class Side:
         self.hue_rows = []  # hue histogram every HUE_EVERY steps
         self.family = None  # last yearly family map
         self.family_step = 0
-        # plotted value = mean of the metric over the last full season (or 200 steps)
+        # plotted value = sum(numerators) / sum(denominators) over the last full season (or 200 steps)
         self.window = deque(maxlen=self.params.season_period or 200)
+        self.num = self.den = 0.0
 
     def step(self, metric: str):
         w = self.world
         if w.population == 0:
             return
         w.step()
-        v = _metric(w, metric)
-        if v == v:
-            self.window.append(v)
+        if len(self.window) == self.window.maxlen:
+            old_n, old_d = self.window[0]
+            self.num -= old_n
+            self.den -= old_d
+        n, d = _metric(w, metric)
+        self.window.append((n, d))
+        self.num += n
+        self.den += d
         if w.step_count % HUE_EVERY == 0:
             self.hue_rows.append(hue_hist(w))
         period = self.params.season_period or 600
@@ -162,7 +170,7 @@ class Side:
         if w.step_count % RECORD_EVERY == 0:
             self.pop_hist.append(w.population)
             if len(self.window) == self.window.maxlen:
-                self.hist.append(float(np.mean(self.window)))
+                self.hist.append(self.num / self.den if self.den > 0 else float("nan"))
 
 
 def draw_series(screen, font, x0, y0, w, h, series, title, x_len=None):
@@ -381,7 +389,7 @@ def main(argv=None) -> int:
         draw_series(screen, font, GAP, py0, half, PLOT_H,
                     [([float("nan")] * (len(s.pop_hist) - len(s.hist)) + s.hist, c)
                      for s, c in zip(sides, cols)],
-                    f"{METRIC_TITLES.get(args.metric, args.metric)} (mean over a year)", x_len=n_pop)
+                    f"{METRIC_TITLES.get(args.metric, args.metric)} (over the last year)", x_len=n_pop)
         draw_series(screen, font, 2 * GAP + half, py0, half, PLOT_H,
                     [(s.pop_hist, c) for s, c in zip(sides, cols)],
                     f"population, step 0..{steps}")
