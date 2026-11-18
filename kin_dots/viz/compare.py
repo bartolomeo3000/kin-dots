@@ -148,12 +148,27 @@ class Side:
         # plotted value = sum(numerators) / sum(denominators) over the last full season (or 200 steps)
         self.window = deque(maxlen=self.params.season_period or 200)
         self.num = self.den = 0.0
+        self.pops = deque(maxlen=self.params.season_period or 600)  # population at each step, last year
+
+    def pop_text(self, max_w: int, font) -> str:
+        """Population now, plus mean / min / max over the last year (shortened if it does not fit)."""
+        p = self.world.population
+        if not self.pops:
+            return f"population {p}"
+        a = np.fromiter(self.pops, dtype=np.int64)
+        for t in (f"population {p}   last year: mean {a.mean():.0f}  min {a.min()}  max {a.max()}",
+                  f"pop {p}  year: mean {a.mean():.0f} min {a.min()} max {a.max()}",
+                  f"pop {p}  yr {a.mean():.0f} ({a.min()}-{a.max()})"):
+            if font.size(t)[0] <= max_w:
+                return t
+        return t
 
     def step(self, metric: str):
         w = self.world
         if w.population == 0:
             return
         w.step()
+        self.pops.append(w.population)
         if len(self.window) == self.window.maxlen:
             old_n, old_d = self.window[0]
             self.num -= old_n
@@ -367,8 +382,8 @@ def main(argv=None) -> int:
             col = LEFT_C if k == 0 else RIGHT_C
             screen.blit(big.render(s.label, True, col), (x0, GAP))
             cur = s.hist[-1] if s.hist else float("nan")
-            screen.blit(font.render(f"step {w.step_count}   population {w.population}", True, FG),
-                        (x0, GAP + 26))
+            screen.blit(font.render(f"step {w.step_count}   " + s.pop_text(BLOCK - font.size(f"step {w.step_count}   ")[0], font),
+                                    True, FG), (x0, GAP + 26))
             pretty = METRIC_TITLES.get(args.metric, args.metric)
             val = f"{cur:.0%}" if args.metric in METRIC_TITLES and cur == cur else f"{cur:.3f}"
             screen.blit(font.render(f"{pretty}: {val}", True, col), (x0, GAP + 46))
