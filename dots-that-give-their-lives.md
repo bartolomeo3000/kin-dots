@@ -118,4 +118,4 @@ cd ~/Desktop/Evolife/Apps/KinSacrifice && ../../.venv/bin/python KinSacrifice.py
 
 ---
 
-How to install, the viewer's keys and the scripts behind every figure are in the [README](README.md). Older working notes with all the runs and the variants that did not work are in [docs/DEMO.md](docs/DEMO.md) and [docs/PLAN.md](docs/PLAN.md) (in Polish).
+How to install, the viewer's keys and the scripts behind every figure are in the [README](README.md).

@@ -6,11 +6,9 @@ An evolution simulation of dot agents that eat, reproduce and die, and that may 
 
 **Start here: [Dots that give their lives](dots-that-give-their-lives.md)**, an explainer for newcomers: the rules, the experiment, the result and why it happens.
 
-Older working notes, in Polish and partly out of date, are in `docs/`: [DEMO.md](docs/DEMO.md) (demo description, robustness checks, caveats) and [PLAN.md](docs/PLAN.md) (model design, metrics, milestones; section 8 is the log of all experiments).
-
 ![The two demo worlds side by side](docs/demo_compare.png)
 
-**Other threads** (described in [docs/PLAN.md](docs/PLAN.md)):
+**Other threads:**
 
 - Sharing with kin and restraint towards kin also evolve, and the controls show that relatedness is what drives them.
 - Alarm calls against predators: the result was inconclusive.
