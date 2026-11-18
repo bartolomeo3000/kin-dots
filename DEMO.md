@@ -34,6 +34,10 @@ Prawie każdy odpowie, że gen „zabij się” szybko wyginie.
 - Ewoluuje reguła **„poświęcam się, kiedy jestem słaby”** (gen `b` spada do ≈ −3.5). W połowie przebiegu reguła przez chwilę idzie w przeciwną stronę: poświęcają się raczej najedzeni (środkowy wykres).
 - Kropki, które się poświęcają, **nie są na skraju śmierci**. Mają ~9.6 energii przy średniej ~12.5, a śmierć głodowa przychodzi dopiero przy 0. Tracą więc realną szansę na przeżycie i potomstwo.
 - **Efekt uboczny, którego nikt nie zaprojektował:** w świecie kontrolnym populacja wpada w cykl dwuletni, czyli rok obfitości, potem rok krachu (prawy wykres, średnia z każdej pory roku skacze między ~1500 a ~3500). W świecie z poświęceniem ten cykl wygasa, a populacja stabilizuje się na ~4300.
+  ![Liczebność populacji krok po kroku](docs/demo_population.png)
+
+  Bez uśredniania widać to jeszcze wyraźniej. W świecie z darem dla sąsiada wszystkie trzy przebiegi mają **prawie identyczny, regularny rytm**: ~8500 kropek latem i ~600 zimą, rok w rok. W świecie kontrolnym lata są na przemian duże i małe, a zimą populacja często spada prawie do zera.
+
 - **Samobójstwo bez daru** (kropka umiera, a jej energia przepada) daje mieszane wyniki: 61%, 44% i 6% śmierci w trzech przebiegach. Liczy się więc *dar dla krewnych*, a nie samo zwolnienie miejsca.
 
 ## Dlaczego tak się dzieje
@@ -83,6 +87,16 @@ Wyraźna różnica pojawia się po ~10 tys. kroków. Przy prędkości 64 to kilk
 
 ```bash
 .venv/bin/python analysis/plot_sacrifice.py results/demo_curves docs/demo_sacrifice.png
+```
+
+Wykres liczebności (~3 minuty):
+
+```bash
+.venv/bin/python analysis/population_runs.py results/population.npz
+```
+
+```bash
+.venv/bin/python analysis/plot_population.py results/population.npz docs/demo_population.png
 ```
 
 ## Uczciwe zastrzeżenia
