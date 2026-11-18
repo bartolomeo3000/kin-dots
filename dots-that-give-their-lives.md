@@ -45,7 +45,7 @@ Intuition says a "kill yourself" gene should die out fast, because its carriers 
 | **Gift to a neighbour** | **~70%** (start: about 5%). The same in every repeated run. |
 | **Gift to a stranger** | **5–10%**. The gene does not spread. |
 
-![Three charts. Left: share of deaths by sacrifice. In the gift-to-a-neighbour world it rises from a few to about 70 percent; in the control world it stays below 15 percent. Middle: gene b, which in the gift-to-a-neighbour world falls to about minus 3.5. Right: mean population, stable in the gift-to-a-neighbour world and jumping year to year in the control.](demo_sacrifice.png)
+![Three charts. Left: share of deaths by sacrifice. In the gift-to-a-neighbour world it rises from a few to about 70 percent; in the control world it stays below 15 percent. Middle: gene b, which in the gift-to-a-neighbour world falls to about minus 3.5. Right: mean population, stable in the gift-to-a-neighbour world and jumping year to year in the control.](docs/demo_sacrifice.png)
 
 *Three runs of each world (thin lines) and their mean (thick). Left panel: what share of deaths are sacrifices. Middle: gene b, which drops below zero in the gift-to-a-neighbour world. Right: mean population size in each year.*
 
@@ -53,7 +53,7 @@ What exactly evolved: the rule **"sacrifice yourself when you are weak"**. Gene 
 
 The other gene, **`a`**, sets the overall urge to sacrifice. It rises throughout the run, from −9 to about −3.5, while in the control world it stays put. The dependence on energy changes in a more interesting way. For the first ~15,000 steps it is the well-fed dots that are more likely to sacrifice; only then does the curve flip. From about step 12,000 a dot with average energy sacrifices at a nearly constant rate of about 0.5% per encounter. After that, what changes is mostly *who* sacrifices. By step 30,000 a dot with energy 5 does it with a chance of about 1.5%, and one almost ready to reproduce (19) with about 0.16%: ten times less often. The process has not stopped yet.
 
-![Five charts. Gene a rises from minus 9 to minus 3.5 in the gift-to-a-neighbour world and stays near minus 9 in the control. The curves of sacrifice chance against energy first rise with energy and later fall with it. Heatmaps show the chance growing over time in the gift-to-a-neighbour world, most for low-energy dots. The ratio of the weak dot's chance to the well-fed dot's first drops below 1, then rises to about 10.](demo_sacrifice_genes.png)
+![Five charts. Gene a rises from minus 9 to minus 3.5 in the gift-to-a-neighbour world and stays near minus 9 in the control. The curves of sacrifice chance against energy first rise with energy and later fall with it. Heatmaps show the chance growing over time in the gift-to-a-neighbour world, most for low-energy dots. The ratio of the weak dot's chance to the well-fed dot's first drops below 1, then rises to about 10.](docs/demo_sacrifice_genes.png)
 
 *Top left: gene a. Top right: the chance to sacrifice per encounter as a function of own energy, at successive moments of evolution (log scale). Bottom maps: the same over the whole run; the white line is the dots' mean energy. Bottom right: how many times more likely a weak dot (energy 5) is to sacrifice than a well-fed one (energy 19).*
 
@@ -83,7 +83,7 @@ The two worlds differ only in the value of r. The fact that the outcome goes in 
 
 In the control world the population falls into a two-year rhythm: a year of plenty, then a crash, and in winter it often drops almost to zero. In the gift-to-a-neighbour world that rhythm disappears and every year looks the same. Nobody designed this.
 
-![Population size step by step. Top: the full run. The yellow line of the gift-to-a-neighbour world has regular waves; the cyan control line is irregular. Bottom: a close-up. The three runs of the gift-to-a-neighbour world almost overlap, while in the control each run behaves differently.](demo_population.png)
+![Population size step by step. Top: the full run. The yellow line of the gift-to-a-neighbour world has regular waves; the cyan control line is irregular. Bottom: a close-up. The three runs of the gift-to-a-neighbour world almost overlap, while in the control each run behaves differently.](docs/demo_population.png)
 
 *Population size at every step. Each wave is one year (up in summer, down in winter). The bottom panels zoom in on the last ten years of three runs.*
 
@@ -91,7 +91,7 @@ In the control world the population falls into a two-year rhythm: a year of plen
 
 Each dot also has an inherited colour that changes very slowly. The dots cannot see it: it is there for us to track families. In the gift-to-a-neighbour world many families live side by side in a mosaic and survive the winter on their own patch. In the control, winter crashes wipe out most families, and each year a few survivors flood the emptied map. In numbers: a dot lives on average 11.6 units from where its ancestor lived a year earlier. In the control it is 21.1.
 
-![Live view after 25,000 steps. Left: the gift-to-a-neighbour world, evenly covered with yellowish dots, its hue-over-time strip showing many families side by side. Right: the control world, blue dots in a few blobs surrounded by uneaten grass, its hue strip showing families repeatedly wiped out. Below: the share of sacrifices and the population for both worlds.](demo_compare.png)
+![Live view after 25,000 steps. Left: the gift-to-a-neighbour world, evenly covered with yellowish dots, its hue-over-time strip showing many families side by side. Right: the control world, blue dots in a few blobs surrounded by uneaten grass, its hue strip showing families repeatedly wiped out. Below: the share of sacrifices and the population for both worlds.](docs/demo_compare.png)
 
 *The live viewer after 25,000 steps. A dot's colour is its current urge to sacrifice: blue almost never, yellow often. The narrow side panels show the family colours: their distribution now, and how it changes over time (time runs downward).*
 
@@ -118,4 +118,4 @@ cd ~/Desktop/Evolife/Apps/KinSacrifice && ../../.venv/bin/python KinSacrifice.py
 
 ---
 
-Model details, all the runs and the variants that did not work are in [DEMO.md](../DEMO.md) and [PLAN.md](../PLAN.md) (in Polish).
+How to install, the viewer's keys and the scripts behind every figure are in the [README](README.md). Older working notes with all the runs and the variants that did not work are in [docs/DEMO.md](docs/DEMO.md) and [docs/PLAN.md](docs/PLAN.md) (in Polish).

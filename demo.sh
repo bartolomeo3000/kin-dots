@@ -1,5 +1,5 @@
 #!/bin/zsh
-# Self-sacrifice demo: two worlds side by side (see DEMO.md).
+# Self-sacrifice demo: two worlds side by side (see dots-that-give-their-lives.md).
 # Usage: ./demo.sh [seed] [max steps per frame]
 cd "$(dirname "$0")"
 exec .venv/bin/python -m kin_dots.viz.compare \

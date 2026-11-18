@@ -1,6 +1,6 @@
 # Demo: kropki, które oddają życie za rodzinę
 
-![Poświęcenie w czasie](docs/demo_sacrifice.png)
+![Poświęcenie w czasie](demo_sacrifice.png)
 
 ## Zasady (do opowiedzenia w minutę)
 
@@ -34,16 +34,16 @@ Prawie każdy odpowie, że gen „zabij się” szybko wyginie.
 **Co dokładnie wyewoluowało:**
 - Ewoluuje reguła **„poświęcam się, kiedy jestem słaby”** (gen `b` spada do ≈ −3.5). Przez pierwsze ~15 tys. kroków reguła idzie w przeciwną stronę: poświęcają się raczej najedzeni (środkowy wykres).
 - **Gen `a`** (ogólna skłonność) rośnie przez cały przebieg z −9 do ≈ −3.5; w kontroli stoi w miejscu (~ −8.7). Od ok. kroku 12 tys. kropka ze średnią energią poświęca się przy spotkaniu z mniej więcej stałą szansą ~0.5%. Dalej zmienia się już głównie to, *kto* się poświęca: po 30 tys. kroków kropka z energią 5 robi to z szansą ~1.5%, a prawie gotowa do rozmnożenia (19) ~0.16%, czyli 10× rzadziej. Po 30 tys. kroków ten proces jeszcze się nie zatrzymał (`analysis/sacrifice_genes.py`, 3 przebiegi).
-  ![Gen a i szansa na poświęcenie w zależności od energii](docs/demo_sacrifice_genes.png)
+  ![Gen a i szansa na poświęcenie w zależności od energii](demo_sacrifice_genes.png)
 - Kropki, które się poświęcają, **nie są na skraju śmierci**. Mają ~9.6 energii przy średniej ~12.5, a śmierć głodowa przychodzi dopiero przy 0. Tracą więc realną szansę na przeżycie i potomstwo.
 - **Efekt uboczny, którego nikt nie zaprojektował:** w świecie kontrolnym populacja wpada w cykl dwuletni, czyli rok obfitości, potem rok krachu (prawy wykres, średnia z każdej pory roku skacze między ~1500 a ~3500). W świecie z poświęceniem ten cykl wygasa, a populacja stabilizuje się na ~4300.
-  ![Liczebność populacji krok po kroku](docs/demo_population.png)
+  ![Liczebność populacji krok po kroku](demo_population.png)
 
   Bez uśredniania widać to jeszcze wyraźniej. W świecie z darem dla sąsiada wszystkie trzy przebiegi mają **prawie identyczny, regularny rytm**: ~8500 kropek latem i ~600 zimą, rok w rok. W świecie kontrolnym lata są na przemian duże i małe, a zimą populacja często spada prawie do zera.
 
 - **Rody: osiadłe vs wędrowne.** Mapa poniżej pokazuje średni dziedziczny kolor kropek w każdym kawałku świata, czyli rody. Jedna klatka to jeden rok, zawsze w szczycie lata, przez 150 lat (90 tys. kroków).
 
-  ![Mapa rodów rok po roku](docs/demo_tags_yearly.gif)
+  ![Mapa rodów rok po roku](demo_tags_yearly.gif)
 
   - W świecie z darem dla sąsiada wiele rodów współistnieje w mozaice, która zmienia się powoli. Rody przeżywają zimę na miejscu i co roku odradzają się w tym samym rejonie.
   - W świecie kontrolnym zimowe krachy wybijają większość rodów. Zostaje kilka wielkich, które co roku na nowo zalewają opustoszałe tereny.
@@ -78,7 +78,7 @@ Co robi skrypt:
   --left-label "dar dla sąsiada" --right-label "dar dla obcego" --metric sacrifice_frac --speed 64
 ```
 
-![Podgląd porównawczy](docs/demo_compare.png)
+![Podgląd porównawczy](demo_compare.png)
 
 **Co jest na ekranie:**
 - **Kolor kropki** pokazuje, jak skłonna jest *teraz* do poświęcenia: niebieska prawie nigdy, żółta często (skala logarytmiczna). Lewy świat z czasem żółknie, prawy zostaje niebieski.

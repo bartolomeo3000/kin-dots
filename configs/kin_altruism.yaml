@@ -1,4 +1,4 @@
-# Warunek, w którym wyewoluowało dzielenie się z krewnymi (PLAN.md, sekcja 8).
+# Warunek, w którym wyewoluowało dzielenie się z krewnymi (docs/PLAN.md, sekcja 8).
 # Pozostałe parametry: wartości domyślne z kin_dots/core/params.py.
 world_size: 300.0
 grid_cells: 75

@@ -4,13 +4,13 @@ An evolution simulation of dot agents that eat, reproduce and die, and that may 
 
 **Main result: self-sacrifice.** A dot can give all its energy to a neighbour and die. Two genes decide how likely it is to do so. Over ~30,000 steps this rises from ~5% to **~70% of all deaths** when the gift goes to a neighbour (usually a relative). In the control, where the gift goes to a random dot anywhere on the map, it stays at **5–10%**. The two worlds differ in that one rule only.
 
-- Explainer for newcomers: [docs/dots-that-give-their-lives.md](docs/dots-that-give-their-lives.md).
-- Full demo description, numbers, robustness checks and caveats (in Polish): [DEMO.md](DEMO.md).
-- Model design, metrics, all experiments and milestones (in Polish): [PLAN.md](PLAN.md), section 8 for the experiment log.
+**Start here: [Dots that give their lives](dots-that-give-their-lives.md)**, an explainer for newcomers: the rules, the experiment, the result and why it happens.
+
+Older working notes, in Polish and partly out of date, are in `docs/`: [DEMO.md](docs/DEMO.md) (demo description, robustness checks, caveats) and [PLAN.md](docs/PLAN.md) (model design, metrics, milestones; section 8 is the log of all experiments).
 
 ![The two demo worlds side by side](docs/demo_compare.png)
 
-**Other threads** (described in PLAN.md):
+**Other threads** (described in [docs/PLAN.md](docs/PLAN.md)):
 
 - Sharing with kin and restraint towards kin also evolve, and the controls show that relatedness is what drives them.
 - Alarm calls against predators: the result was inconclusive.

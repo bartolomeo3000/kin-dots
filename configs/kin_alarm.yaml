@@ -1,4 +1,4 @@
-# Drapieżniki + pory roku: czy wyewoluuje krzyk ostrzegawczy? (PLAN.md, sekcja 8)
+# Drapieżniki + pory roku: czy wyewoluuje krzyk ostrzegawczy? (docs/PLAN.md, sekcja 8)
 # Wynik na razie niejednoznaczny: krzyk rośnie w 3/4 przebiegów, ale w kontroli też raz.
 world_size: 300.0
 grid_cells: 75
