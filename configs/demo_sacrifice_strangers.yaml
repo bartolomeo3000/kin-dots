@@ -13,6 +13,6 @@ tag_blind_share: true     # decyzja nie widzi podobieństwa (brak rozpoznawania 
 share_sees_other: false   # ...ani energii biorcy: tylko własną
 share_all: true           # dar = cała energia, dawca umiera
 founder_share_bias: -9.0  # na starcie poświęcenie jest bardzo rzadkie
-mutation_sd: 0.0          # zachłanność w jedzeniu stała (jedyne ewoluujące geny to te 2 liczby)
+mutation_sd: 0.0          # zachłanność w jedzeniu stała. Ewoluują: a, b oraz siła podążania za trawą
 founder_harvest: 0.5
 share_to_random: true

@@ -40,6 +40,10 @@ MUTED = (140, 140, 150)
 LEFT_C = (250, 210, 40)
 RIGHT_C = (90, 220, 230)
 RECORD_EVERY = 10   # steps between plotted samples (the whole run is always shown)
+METRIC_TITLES = {  # readable names for the plot and the header
+    "sacrifice_frac": "deaths that are self-sacrifice",
+    "share_rate": "encounters with an energy gift",
+}
 COLOR_MODES = ("p(give)", "energy", "tag")  # tag = inherited colour: shows family lineages
 
 
@@ -243,7 +247,9 @@ def main(argv=None) -> int:
             cur = s.hist[-1] if s.hist else float("nan")
             screen.blit(font.render(f"step {w.step_count}   population {w.population}", True, FG),
                         (x0, GAP + 26))
-            screen.blit(font.render(f"{args.metric} {cur:.3f}", True, col), (x0, GAP + 46))
+            pretty = METRIC_TITLES.get(args.metric, args.metric)
+            val = f"{cur:.0%}" if args.metric in METRIC_TITLES and cur == cur else f"{cur:.3f}"
+            screen.blit(font.render(f"{pretty}: {val}", True, col), (x0, GAP + 46))
             draw_world(screen, s, x0, GAP + TEXT_H, COLOR_MODES[mode], show_food, show_gifts)
 
         # plots: chosen metric (season mean) and raw population, both for the whole run
@@ -256,7 +262,7 @@ def main(argv=None) -> int:
         draw_series(screen, font, GAP, py0, half, PLOT_H,
                     [([float("nan")] * (len(s.pop_hist) - len(s.hist)) + s.hist, c)
                      for s, c in zip(sides, cols)],
-                    f"{args.metric} (season mean)", x_len=n_pop)
+                    f"{METRIC_TITLES.get(args.metric, args.metric)} (mean over a year)", x_len=n_pop)
         draw_series(screen, font, 2 * GAP + half, py0, half, PLOT_H,
                     [(s.pop_hist, c) for s, c in zip(sides, cols)],
                     f"population, step 0..{steps}")

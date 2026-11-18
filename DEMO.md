@@ -9,7 +9,8 @@
 3. Kropka z zerową energią umiera z głodu. Po 300 krokach umiera ze starości.
 4. Gdy kropka uzbiera 20 energii, dzieli się na dwie. Dziecko pojawia się tuż obok i dziedziczy geny z drobną mutacją.
 5. **Jedna dodatkowa możliwość:** w każdym kroku kropka może **oddać całą swoją energię losowemu sąsiadowi i umrzeć**.
-6. O tym, jak często to robi, decyduje genom złożony z **dwóch liczb**: `p = sigmoid(a + b · moja energia)`. Na starcie `a = −9`, więc tak umiera tylko ~5% kropek.
+6. O tym, jak często to robi, decydują **dwa geny**: `p = sigmoid(a + b · moja energia)`. Na starcie `a = −9`, więc tak umiera tylko ~5% kropek.
+7. Ewoluuje jeszcze jeden gen: jak mocno kropka kieruje się w stronę trawy. W obu światach rośnie podobnie (z ~1.2 do ~4–8), więc nie wyjaśnia różnicy między nimi.
 
 **Czego w modelu nie ma:**
 - rozpoznawania krewnych (kropki nie widzą, kto jest kim),
@@ -37,6 +38,15 @@ Prawie każdy odpowie, że gen „zabij się” szybko wyginie.
   ![Liczebność populacji krok po kroku](docs/demo_population.png)
 
   Bez uśredniania widać to jeszcze wyraźniej. W świecie z darem dla sąsiada wszystkie trzy przebiegi mają **prawie identyczny, regularny rytm**: ~8500 kropek latem i ~600 zimą, rok w rok. W świecie kontrolnym lata są na przemian duże i małe, a zimą populacja często spada prawie do zera.
+
+- **Rody: osiadłe vs wędrowne.** Mapa poniżej pokazuje średni dziedziczny kolor kropek w każdym kawałku świata, czyli rody. Jedna klatka to jeden rok, zawsze w szczycie lata.
+
+  ![Mapa rodów rok po roku](docs/demo_tags_yearly.gif)
+
+  - W świecie z darem dla sąsiada wiele rodów współistnieje w mozaice, która zmienia się powoli. Rody przeżywają zimę na miejscu i co roku odradzają się w tym samym rejonie.
+  - W świecie kontrolnym zimowe krachy wybijają większość rodów. Zostaje kilka wielkich, które co roku na nowo zalewają opustoszałe tereny.
+  - Liczbowo: kropka żyje średnio (mediana) **12.6** jednostki od miejsca, w którym rok wcześniej żył jej przodek. W świecie kontrolnym to **21.9**.
+  - Szybsza wersja, z klatką co 150 kroków, w której widać też pory roku: `docs/demo_tags.gif`.
 
 - **Samobójstwo bez daru** (kropka umiera, a jej energia przepada) daje mieszane wyniki: 61%, 44% i 6% śmierci w trzech przebiegach. Liczy się więc *dar dla krewnych*, a nie samo zwolnienie miejsca.
 
@@ -97,6 +107,12 @@ Wykres liczebności (~3 minuty):
 
 ```bash
 .venv/bin/python analysis/plot_population.py results/population.npz docs/demo_population.png
+```
+
+GIF-y z mapą rodów (~3 minuty):
+
+```bash
+.venv/bin/python analysis/tag_movie.py docs/demo_tags.gif docs/demo_tags_yearly.gif
 ```
 
 ## Uczciwe zastrzeżenia

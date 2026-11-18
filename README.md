@@ -4,7 +4,7 @@ Ewolucyjna symulacja kropek-agentów, które jedzą, walczą, rozmnażają się 
 
 Szczegóły modelu, metryki, eksperymenty i kamienie milowe: [PLAN.md](PLAN.md).
 
-**Najlepsze demo: [DEMO.md](DEMO.md).** Kropki z genomem złożonym z dwóch liczb ewoluują od ~5% do ~70% śmierci przez poświęcenie za sąsiada, a w kontroli (dar dla obcego) nie. **Status:** M3 gotowy, dodane drapieżniki i krzyk ostrzegawczy. Dzielenie się z krewnymi i powściągliwość wobec krewnych ewoluują, a ich źródłem jest pokrewieństwo (kontrole). Krzyk ostrzegawczy: wynik niejednoznaczny. Szczegóły: sekcja 8 w [PLAN.md](PLAN.md). Nowy wariant: dwa gatunki z frontem, walką tylko z obcymi i obroną krewnych.
+**Najlepsze demo: [DEMO.md](DEMO.md).** Kropki, w których o poświęceniu decydują dwa geny, ewoluują od ~5% do ~70% śmierci przez poświęcenie za sąsiada, a w kontroli (dar dla obcego) nie. **Status:** M3 gotowy, dodane drapieżniki i krzyk ostrzegawczy. Dzielenie się z krewnymi i powściągliwość wobec krewnych ewoluują, a ich źródłem jest pokrewieństwo (kontrole). Krzyk ostrzegawczy: wynik niejednoznaczny. Szczegóły: sekcja 8 w [PLAN.md](PLAN.md). Nowy wariant: dwa gatunki z frontem, walką tylko z obcymi i obroną krewnych.
 
 ## Instalacja
 

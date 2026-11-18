@@ -18,8 +18,8 @@ import matplotlib.pyplot as plt  # noqa: E402
 import numpy as np  # noqa: E402
 
 CONDS = {
-    "sacrifice-local": ("dar trafia do sąsiada (zwykle krewnego)", "#d9a400"),
-    "sacrifice-strangers": ("dar trafia do losowej kropki z mapy", "#2a9fb0"),
+    "sacrifice-local": ("gift goes to a neighbour (usually a relative)", "#d9a400"),
+    "sacrifice-strangers": ("gift goes to a random dot anywhere (a stranger)", "#2a9fb0"),
 }
 
 
@@ -50,16 +50,16 @@ def main(src: str, out: str) -> None:
             for d in data:
                 ax.plot(runs[0][0][:n], d, color=color, alpha=0.3, lw=1)
             ax.plot(runs[0][0][:n], np.nanmean(data, axis=0), color=color, lw=2.5,
-                    label=f"{label} ({len(runs)} przebiegi)")
-    axes[0].set_title("Jaki odsetek śmierci to dobrowolne oddanie całej energii sąsiadowi")
-    axes[0].set_ylabel("% wszystkich śmierci")
+                    label=f"{label} ({len(runs)} runs)")
+    axes[0].set_title("Share of deaths that are self-sacrifice (all energy given away)")
+    axes[0].set_ylabel("% of all deaths")
     axes[0].set_ylim(0, 100)
     axes[0].legend(loc="upper left", frameon=False)
-    axes[1].set_title("Gen b: jak skłonność zależy od własnej energii\n(< 0: poświęcają się słabsi)")
+    axes[1].set_title("Gene b: how the urge depends on own energy\n(< 0: the weak sacrifice themselves)")
     axes[1].axhline(0, color="gray", lw=0.8)
-    axes[2].set_title("Średnia liczebność populacji")
+    axes[2].set_title("Mean population size (per year)")
     for ax in axes:
-        ax.set_xlabel("krok symulacji")
+        ax.set_xlabel("simulation step")
         ax.spines[["top", "right"]].set_visible(False)
     fig.tight_layout()
     Path(out).parent.mkdir(parents=True, exist_ok=True)
