@@ -39,13 +39,13 @@ Prawie każdy odpowie, że gen „zabij się” szybko wyginie.
 
   Bez uśredniania widać to jeszcze wyraźniej. W świecie z darem dla sąsiada wszystkie trzy przebiegi mają **prawie identyczny, regularny rytm**: ~8500 kropek latem i ~600 zimą, rok w rok. W świecie kontrolnym lata są na przemian duże i małe, a zimą populacja często spada prawie do zera.
 
-- **Rody: osiadłe vs wędrowne.** Mapa poniżej pokazuje średni dziedziczny kolor kropek w każdym kawałku świata, czyli rody. Jedna klatka to jeden rok, zawsze w szczycie lata.
+- **Rody: osiadłe vs wędrowne.** Mapa poniżej pokazuje średni dziedziczny kolor kropek w każdym kawałku świata, czyli rody. Jedna klatka to jeden rok, zawsze w szczycie lata, przez 150 lat (90 tys. kroków).
 
   ![Mapa rodów rok po roku](docs/demo_tags_yearly.gif)
 
   - W świecie z darem dla sąsiada wiele rodów współistnieje w mozaice, która zmienia się powoli. Rody przeżywają zimę na miejscu i co roku odradzają się w tym samym rejonie.
   - W świecie kontrolnym zimowe krachy wybijają większość rodów. Zostaje kilka wielkich, które co roku na nowo zalewają opustoszałe tereny.
-  - Liczbowo: kropka żyje średnio (mediana) **12.6** jednostki od miejsca, w którym rok wcześniej żył jej przodek. W świecie kontrolnym to **21.9**.
+  - Liczbowo: kropka żyje średnio (mediana) **11.6** jednostki od miejsca, w którym rok wcześniej żył jej przodek. W świecie kontrolnym to **21.1** (lata 25–150).
   - Szybsza wersja, z klatką co 150 kroków, w której widać też pory roku: `docs/demo_tags.gif`.
 
 - **Samobójstwo bez daru** (kropka umiera, a jej energia przepada) daje mieszane wyniki: 61%, 44% i 6% śmierci w trzech przebiegach. Liczy się więc *dar dla krewnych*, a nie samo zwolnienie miejsca.
@@ -109,10 +109,10 @@ Wykres liczebności (~3 minuty):
 .venv/bin/python analysis/plot_population.py results/population.npz docs/demo_population.png
 ```
 
-GIF-y z mapą rodów (~3 minuty):
+GIF-y z mapą rodów (90 tys. kroków, ~10 minut):
 
 ```bash
-.venv/bin/python analysis/tag_movie.py docs/demo_tags.gif docs/demo_tags_yearly.gif
+.venv/bin/python analysis/tag_movie.py docs/demo_tags.gif docs/demo_tags_yearly.gif 90000
 ```
 
 ## Uczciwe zastrzeżenia

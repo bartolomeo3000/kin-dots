@@ -1,6 +1,6 @@
 """GIFs of the two demo worlds as maps of family colour (tag), plus family-turnover numbers.
 
-    .venv/bin/python analysis/tag_movie.py docs/demo_tags.gif docs/demo_tags_yearly.gif
+    .venv/bin/python analysis/tag_movie.py docs/demo_tags.gif docs/demo_tags_yearly.gif [steps]
 
 Each map pixel block shows the mean inherited colour (tag) of the dots in that patch of
 the world; brightness = how many dots are there (dark = empty). Families show up as
@@ -57,12 +57,12 @@ def heatmap(w: World) -> np.ndarray:
 
 
 def run(job):
-    label, path = job
+    label, path, steps = job
     w = World(Params.from_yaml(path).replace(seed=SEED))
     period = w.p.season_period
     frames, yearly, stats = [], [], []
     prev = None  # (ids, x, y) at last year's peak
-    while w.step_count < STEPS and w.population > 0:
+    while w.step_count < steps and w.population > 0:
         w.step()
         if w.step_count % FRAME_EVERY == 0:
             frames.append((w.step_count, w.population, heatmap(w)))
@@ -113,9 +113,10 @@ def compose(results, which: int, title_fn, out: str, ms: int):
     print(f"saved {out}: {n} frames, {Path(out).stat().st_size / 1e6:.1f} MB")
 
 
-def main(out_fast: str, out_yearly: str) -> None:
+def main(out_fast: str, out_yearly: str, steps: str = "") -> None:
+    n = int(steps) if steps else STEPS
     with Pool(2) as pool:
-        results = pool.map(run, PRESETS)
+        results = pool.map(run, [(label, path, n) for label, path in PRESETS])
     compose(results, 1, lambda s: f"step {s}", out_fast, 60)
     compose(results, 2, lambda s: f"year {s // 600}", out_yearly, 220)
     for label, _, _, stats in results:
@@ -130,4 +131,4 @@ def main(out_fast: str, out_yearly: str) -> None:
 
 
 if __name__ == "__main__":
-    main(*sys.argv[1:3])
+    main(*sys.argv[1:4])
