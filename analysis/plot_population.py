@@ -46,6 +46,8 @@ def main(src: str, out: str) -> None:
                   f"Każda fala to jedna pora roku ({period} kroków).")
     top.set_ylabel("liczba kropek")
     top.set_xlabel("krok symulacji")
+    top.set_ylim(bottom=0)
+    top.set_xlim(left=0)
     top.legend(loc="upper left", frameon=False)
     top.axvspan(*ZOOM, color="#888888", alpha=0.12, lw=0)
     top.text(ZOOM[0] + 100, top.get_ylim()[1] * 0.92, "zbliżenie poniżej", color="#555555")
