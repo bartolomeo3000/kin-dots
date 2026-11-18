@@ -65,7 +65,16 @@ To see whether self-sacrifice still evolves in a different world, pass `--set` w
 ./demo.sh 3 --set move_speed=0.2 dispersal_sd=4       # seed 3, more mixing of families
 ```
 
-The window title shows the overrides, and a misspelt name or a value of the wrong type stops with an error. The demo's own settings are in [`configs/demo_sacrifice.yaml`](configs/demo_sacrifice.yaml). The control, [`configs/demo_sacrifice_strangers.yaml`](configs/demo_sacrifice_strangers.yaml), is the same file plus `share_to_random: true`. Every parameter, with its default and a one-line meaning, is in [`kin_dots/core/params.py`](kin_dots/core/params.py). The ones most worth playing with:
+To keep a set of changes, write them in a small YAML file, one `name: value` per line, and pass it with `--set-file`. It also applies to both worlds, and `--set` can still be added on top. [`configs/demo_overrides_example.yaml`](configs/demo_overrides_example.yaml) is a template to copy:
+
+```bash
+./demo.sh --set-file my_world.yaml
+./demo.sh --set-file my_world.yaml --set move_speed=0.3
+```
+
+The window title shows the overrides, and a misspelt name or a value of the wrong type stops with an error.
+
+The demo's own settings are in [`configs/demo_sacrifice.yaml`](configs/demo_sacrifice.yaml). The control, [`configs/demo_sacrifice_strangers.yaml`](configs/demo_sacrifice_strangers.yaml), is the same file plus `share_to_random: true`. You can also edit these two by hand. If you do, make every change in both files, or the worlds will differ in more than the one rule. `--set` and `--set-file` avoid that. Every parameter, with its default and a one-line meaning, is in [`kin_dots/core/params.py`](kin_dots/core/params.py). The ones most worth playing with:
 
 | parameter | demo value | meaning | Evolife name |
 |---|---|---|---|

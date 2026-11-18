@@ -8,7 +8,9 @@ for both (left = yellow, right = cyan) over the last year, and one the raw popul
 
     --set KEY=VAL [KEY=VAL ...]   change parameters in BOTH worlds, e.g.
                                   --set season_amplitude=0.7 move_speed=0.2
-                                  (names and meanings: kin_dots/core/params.py)
+    --set-file FILE.yaml          the same from a file of 'name: value' lines
+                                  (--set is applied on top of it)
+    Names and meanings: kin_dots/core/params.py.
 
 Keys: SPACE pause, UP/DOWN max steps per frame, C colour mode, F food layer, G energy gifts
 (white lines donor -> recipient), H side panels, R restart, ESC quit.
@@ -31,6 +33,7 @@ from collections import deque
 from pathlib import Path
 
 import numpy as np
+import yaml
 
 os.environ.setdefault("PYGAME_HIDE_SUPPORT_PROMPT", "1")
 import pygame  # noqa: E402
@@ -311,13 +314,23 @@ def main(argv=None) -> int:
     ap.add_argument("--color", choices=COLOR_MODES, default=COLOR_MODES[0])
     ap.add_argument("--frames", type=int, default=0)
     ap.add_argument("--screenshot", type=Path)
+    ap.add_argument("--set-file", type=Path, metavar="FILE.yaml",
+                    help="YAML with parameter overrides applied to both worlds (only the changes)")
     ap.add_argument("--set", nargs="+", default=[], metavar="KEY=VAL",
-                    help="parameter overrides applied to both worlds (see kin_dots/core/params.py)")
+                    help="parameter overrides applied to both worlds, on top of --set-file "
+                         "(see kin_dots/core/params.py)")
     args = ap.parse_args(argv)
+    items = []
+    if args.set_file:
+        with open(args.set_file) as f:
+            from_file = yaml.safe_load(f) or {}
+        if not isinstance(from_file, dict):
+            ap.error(f"{args.set_file}: expected 'name: value' lines")
+        items = [f"{k}={v!r}" for k, v in from_file.items()]
     try:
-        overrides = parse_overrides(args.set)
+        overrides = parse_overrides(items + args.set)
     except ValueError as e:
-        ap.error(str(e))
+        ap.error(f"{e}" + (f" (in {args.set_file} or --set)" if args.set_file else ""))
 
     sides = [Side(Params.from_yaml(args.left).replace(seed=args.seed, **overrides),
                   args.left_label or args.left.stem),
@@ -326,7 +339,8 @@ def main(argv=None) -> int:
     if overrides:
         print("both worlds:", "  ".join(f"{k}={v}" for k, v in overrides.items()))
     pygame.init()
-    pygame.display.set_caption("kin-dots: compare" + ("   [" + "  ".join(args.set) + "]" if args.set else ""))
+    shown = ([args.set_file.name] if args.set_file else []) + args.set
+    pygame.display.set_caption("kin-dots: compare" + ("   [" + "  ".join(shown) + "]" if shown else ""))
     global VIEW
     if args.view > 0:
         VIEW = args.view

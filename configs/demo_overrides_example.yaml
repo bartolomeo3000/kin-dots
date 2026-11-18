@@ -1,0 +1,12 @@
+# Example of your own changes to the self-sacrifice demo. Copy this file, uncomment and
+# edit what you want, then run:   ./demo.sh --set-file my_world.yaml
+# Every line applies to BOTH worlds, so they still differ only in who receives the gift.
+# All names, defaults and meanings: kin_dots/core/params.py
+season_amplitude: 0.7      # how harsh winter is (demo: 0.9; 0 = no seasons)
+# season_period: 600       # steps in a year
+# move_speed: 0.1          # distance a dot moves per step
+# dispersal_sd: 2.0        # how far from its parent a child is born
+# interaction_radius: 4.0  # how close a neighbour must be to be met
+# share_benefit: 0.9       # share of the giver's energy that reaches the recipient
+# max_age: 300             # death by old age
+# init_agents: 2500        # starting population
