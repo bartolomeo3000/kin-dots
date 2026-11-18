@@ -110,12 +110,6 @@ Python version (pygame), the two worlds side by side, from the repository root:
 ./demo.sh
 ```
 
-Evolife app version (a separate port, not in this repository; path on the author's machine):
-
-```bash
-cd ~/Desktop/Evolife/Apps/KinSacrifice && ../../.venv/bin/python KinSacrifice.py
-```
-
 ---
 
 How to install, the viewer's keys and the scripts behind every figure are in the [README](README.md).
