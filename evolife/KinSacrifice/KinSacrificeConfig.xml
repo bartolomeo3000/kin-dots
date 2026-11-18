@@ -1,0 +1,218 @@
+<Config>
+	<Parameter>
+		<Name>PARAMETERS</Name>
+		<Description><info><![CDATA[Kin sacrifice: dots may give all their energy to a neighbour and die. Nothing tells them to help relatives, yet self-sacrifice spreads, but only when the gift goes to a neighbour (usually a relative), not to a random stranger.<br><br>Click on values to change them, then run.]]></info></Description>
+	</Parameter>
+	<Parameter>
+		<Name>World</Name>
+		<Parameter>
+			<Name>WorldSize</Name>
+			<Description><info><![CDATA[Side of the (toric) world]]></info></Description>
+			<Value>300</Value>
+		</Parameter>
+		<Parameter>
+			<Name>GrassCells</Name>
+			<Description><info><![CDATA[The grass grid has GrassCells x GrassCells cells]]></info></Description>
+			<Value>75</Value>
+		</Parameter>
+		<Parameter>
+			<Name>GrassCapacity</Name>
+			<Description><info><![CDATA[Maximal amount of grass in one cell]]></info></Description>
+			<Value>10</Value>
+		</Parameter>
+		<Parameter>
+			<Name>GrassGrowth</Name>
+			<Description><info><![CDATA[Logistic regrowth rate of grass per step]]></info></Description>
+			<Value>0.05</Value>
+		</Parameter>
+		<Parameter>
+			<Name>GrassInflow</Name>
+			<Description><info><![CDATA[Constant regrowth of grass per cell per step]]></info></Description>
+			<Value>0.1</Value>
+		</Parameter>
+		<Parameter>
+			<Name>InitialGrass</Name>
+			<Description><info><![CDATA[Initial grass, as a fraction of capacity]]></info></Description>
+			<Value>0.5</Value>
+		</Parameter>
+		<Parameter>
+			<Name>SeasonLength</Name>
+			<Description><info><![CDATA[Steps per year]]></info></Description>
+			<Value>600</Value>
+		</Parameter>
+		<Parameter>
+			<Name>WinterHarshness</Name>
+			<Description><info><![CDATA[Grass regrowth is multiplied by 1 + WinterHarshness * sin(2 pi t / SeasonLength).<br>0.9: in mid-winter grass grows 10 times slower than normal.]]></info></Description>
+			<Value>0.9</Value>
+		</Parameter>
+	</Parameter>
+	<Parameter>
+		<Name>Dots</Name>
+		<Parameter>
+			<Name>InitialPopulation</Name>
+			<Description><info><![CDATA[Number of dots at start]]></info></Description>
+			<Value>2500</Value>
+		</Parameter>
+		<Parameter>
+			<Name>InitialEnergy</Name>
+			<Description><info><![CDATA[Energy of each dot at start]]></info></Description>
+			<Value>10</Value>
+		</Parameter>
+		<Parameter>
+			<Name>Speed</Name>
+			<Description><info><![CDATA[Distance walked per step. Slow dots keep families together.]]></info></Description>
+			<Value>0.1</Value>
+		</Parameter>
+		<Parameter>
+			<Name>MoveCost</Name>
+			<Description><info><![CDATA[Energy per unit of distance walked]]></info></Description>
+			<Value>0.05</Value>
+		</Parameter>
+		<Parameter>
+			<Name>Metabolism</Name>
+			<Description><info><![CDATA[Energy spent per step]]></info></Description>
+			<Value>0.1</Value>
+		</Parameter>
+		<Parameter>
+			<Name>MaxAge</Name>
+			<Description><info><![CDATA[Death by old age after this many steps]]></info></Description>
+			<Value>300</Value>
+		</Parameter>
+		<Parameter>
+			<Name>Bite</Name>
+			<Description><info><![CDATA[Fraction of the grass of its cell a dot eats per step]]></info></Description>
+			<Value>0.5</Value>
+		</Parameter>
+		<Parameter>
+			<Name>BirthThreshold</Name>
+			<Description><info><![CDATA[Energy at which a dot splits in two]]></info></Description>
+			<Value>20</Value>
+		</Parameter>
+		<Parameter>
+			<Name>BirthCost</Name>
+			<Description><info><![CDATA[Energy lost at each birth]]></info></Description>
+			<Value>1</Value>
+		</Parameter>
+		<Parameter>
+			<Name>ChildSpread</Name>
+			<Description><info><![CDATA[Typical distance between a child and its parent]]></info></Description>
+			<Value>2</Value>
+		</Parameter>
+	</Parameter>
+	<Parameter>
+		<Name>Sacrifice</Name>
+		<Parameter>
+			<Name>MeetRadius</Name>
+			<Description><info><![CDATA[A dot meets a random neighbour within this distance]]></info></Description>
+			<Value>4</Value>
+		</Parameter>
+		<Parameter>
+			<Name>GiftEfficiency</Name>
+			<Description><info><![CDATA[Share of the donor's energy that the recipient gets]]></info></Description>
+			<Value>0.9</Value>
+		</Parameter>
+		<Parameter>
+			<Name>InitialA</Name>
+			<Description><info><![CDATA[Initial value of gene a. Probability of sacrifice per step = sigmoid(a + b * energy / BirthThreshold)]]></info></Description>
+			<Value>-9</Value>
+		</Parameter>
+		<Parameter>
+			<Name>InitialB</Name>
+			<Description><info><![CDATA[Initial value of gene b (b &lt; 0: weak dots sacrifice more)]]></info></Description>
+			<Value>0</Value>
+		</Parameter>
+		<Parameter>
+			<Name>InitialFoodSeeking</Name>
+			<Description><info><![CDATA[Initial value of the gene telling how strongly a dot heads towards grass]]></info></Description>
+			<Value>1</Value>
+		</Parameter>
+		<Parameter>
+			<Name>FounderNoise</Name>
+			<Description><info><![CDATA[Spread of the founders' genes around their initial values]]></info></Description>
+			<Value>0.5</Value>
+		</Parameter>
+		<Parameter>
+			<Name>MutationSD</Name>
+			<Description><info><![CDATA[Mutation of genes a, b and food seeking at each birth]]></info></Description>
+			<Value>0.15</Value>
+		</Parameter>
+		<Parameter>
+			<Name>TagMutationSD</Name>
+			<Description><info><![CDATA[Mutation of the inherited family colour at each birth]]></info></Description>
+			<Value>0.02</Value>
+		</Parameter>
+		<Parameter>
+			<Name>ShowControl</Name>
+			<Description><info><![CDATA[1: also simulate the control world, where the gift goes to a random stranger]]></info></Description>
+			<Value>1</Value>
+		</Parameter>
+	</Parameter>
+	<Parameter>
+		<Name>Simulation</Name>
+		<Parameter>
+			<Name>ColourMode</Name>
+			<Description><info><![CDATA[Colour of dots: propensity (urge to sacrifice), family or energy. Keys 1, 2, 3 change it during the run.]]></info></Description>
+			<Value>propensity</Value>
+		</Parameter>
+		<Parameter>
+			<Name>ShowGrass</Name>
+			<Description><info><![CDATA[1: show grass (green) in the Field window; key 0 toggles it during the run]]></info></Description>
+			<Value>1</Value>
+		</Parameter>
+		<Parameter>
+			<Name>DisplayPeriod</Name>
+			<Description><info><![CDATA[Display every ... steps]]></info></Description>
+			<Value>20</Value>
+		</Parameter>
+		<Parameter>
+			<Name>TimeLimit</Name>
+			<Description><info><![CDATA[Max number of simulation steps]]></info></Description>
+			<Value>30000</Value>
+		</Parameter>
+		<Parameter>
+			<Name>RandomSeed</Name>
+			<Description><info><![CDATA[Put 0 for random results, or any other value to get reproducible runs]]></info></Description>
+			<Value>0</Value>
+		</Parameter>
+		<Parameter>
+			<Name>Run</Name>
+			<Description><info><![CDATA[If 0 or False, the simulation waits for button [Run] to start.]]></info></Description>
+			<Value>1</Value>
+		</Parameter>
+		<Parameter>
+			<Name>ApplicationDir</Name>
+			<Description><info><![CDATA[Directory where the simulation can be found]]></info></Description>
+			<Value>.</Value>
+		</Parameter>
+		<Parameter>
+			<Name>Target</Name>
+			<Description><info><![CDATA[Programme to be executed]]></info></Description>
+			<Value>KinSacrifice.py</Value>
+		</Parameter>
+		<Parameter>
+			<Name>RunConfigFile</Name>
+			<Description><info><![CDATA[Parameter values that will be read by the programme]]></info></Description>
+			<Value>_Params.evo</Value>
+		</Parameter>
+		<Parameter>
+			<Name>ScenarioName</Name>
+			<Description><info><![CDATA[Name of the scenario]]></info></Description>
+			<Value>KinSacrifice</Value>
+		</Parameter>
+		<Parameter>
+			<Name>ScenarioFileName</Name>
+			<Description><info><![CDATA[File where parameters are saved]]></info></Description>
+			<Value>KinSacrifice.evo</Value>
+		</Parameter>
+		<Parameter>
+			<Name>Title</Name>
+			<Description><info><![CDATA[Name of the present Configuration Editor]]></info></Description>
+			<Value>Evolife_Kin_Sacrifice</Value>
+		</Parameter>
+		<Parameter>
+			<Name>WindowSize</Name>
+			<Description><info><![CDATA[Size of window for display]]></info></Description>
+			<Value>1000</Value>
+		</Parameter>
+	</Parameter>
+</Config>

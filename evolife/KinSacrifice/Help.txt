@@ -1,0 +1,60 @@
+
+
+Kin sacrifice
+=============
+
+Dots may give ALL their energy to a neighbour and die.
+Nothing in the rules tells them to help relatives, and they cannot recognise relatives.
+Yet self-sacrifice spreads, until most deaths are voluntary.
+It does so only when the gift goes to a neighbour (usually a relative),
+not when it goes to a random stranger.
+
+Rules (both worlds)
+-------------------
+- Grass grows on a torus. It regrows much more slowly in winter (one year = SeasonLength steps).
+- Dots walk slowly towards grass and eat it. Every step costs energy.
+- A dot dies of hunger (energy 0) or of old age (MaxAge steps).
+- With BirthThreshold energy, a dot splits in two: the child appears next to it and inherits
+  its genes with small mutations (asexual reproduction).
+- At each step a dot meets a random neighbour (within MeetRadius) and, with probability
+      p = sigmoid(a + b * energy / BirthThreshold)
+  gives it all its energy (the recipient gets GiftEfficiency of it) and dies.
+  a and b are genes. At start a = -9: sacrifice is very rare.
+  A third gene, how strongly a dot heads towards grass, also evolves (similarly in both worlds).
+
+The only difference
+-------------------
+Left:  the energy goes to the neighbour that was met. Since children are born next to their
+       parents and dots barely move, neighbours are usually close relatives.
+Right: (control) the energy goes to a random dot anywhere in the world: a stranger.
+
+What to watch
+-------------
+- Curves (red = left world, blue = right world):
+  thick: % of deaths over the last year that are self-sacrifice
+  thin:  population size, in hundreds
+  On the left, sacrifice rises from a few % to about 70% of all deaths (after ~10,000-20,000 steps).
+  On the right, it stays low.
+- The rule that evolves is "sacrifice yourself when you are weak" (b becomes negative):
+  weak dots are unlikely to survive the winter anyway, and their energy goes to relatives
+  carrying the same genes. This is Hamilton's rule (r B > C) at work: the right world is
+  identical except that r is about 0.
+- The Field window (key F) shows both worlds: grass in green, dots coloured by
+     1 = urge to sacrifice (blue = never, yellow = often)
+     2 = family (inherited colour, mutates slowly: patches of one colour are families)
+     3 = energy
+  White lines are the gifts of the last step (short on the left, long on the right).
+  Above each world: the population now, and its mean / min / max over the last year.
+  Key 0 shows / hides the grass. Keys 0, 1, 2, 3 work in the main window.
+- The 'Families (hue)' window (key T) follows the inherited family colours of both worlds:
+     top:    how many dots carry each hue right now
+     bottom: the same over the whole run, time running downward; a vertical band is a family.
+  On the left many families persist side by side; on the right, winter crashes keep wiping
+  most of them out and a few survivors take over.
+
+Notes
+-----
+- The early winters are a bottleneck: before sacrifice spreads, the population may drop to
+  a few dozen dots. With an unlucky seed a world may die out; restart with another seed.
+- Port of the 'kin-dots' project (NumPy). SacrificeWorld.py can also run without graphics:
+      python SacrificeWorld.py <steps> <seed> <winter harshness>

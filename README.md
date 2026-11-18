@@ -56,7 +56,15 @@ Keys:
 
 A clear difference shows after ~10,000 steps, a few minutes at speed 64. The window fits the screen and the simulation runs in a fixed time budget per frame, so the window stays responsive. If a world dies out in the first winters (an unlucky seed), start with another seed.
 
-There is also a port of the demo as an app for [Evolife](https://evolife.telecom-paris.fr) (J.-L. Dessalles's framework). It is not included in this repository.
+### Evolife version
+
+[`evolife/KinSacrifice/`](evolife/KinSacrifice) is the same demo as an app for [Evolife](https://evolife.telecom-paris.fr) (J.-L. Dessalles's framework). It is a standalone NumPy port and does not use the `kin_dots` package. To use it:
+
+1. Install Evolife following its own instructions.
+2. Copy the `KinSacrifice` folder into Evolife's `Apps/` folder.
+3. Launch it the Evolife way: `./starter` on macOS and Linux, `Starter.bat` on Windows.
+
+The Python that runs Evolife needs PyQt, numpy and Pillow. The app's `Help.txt` explains what is on screen and the keys.
 
 ## Figures and analyses
 
