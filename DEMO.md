@@ -82,6 +82,8 @@ Co robi skrypt:
 - **Kolor kropki** pokazuje, jak skłonna jest *teraz* do poświęcenia: niebieska prawie nigdy, żółta często (skala logarytmiczna). Lewy świat z czasem żółknie, prawy zostaje niebieski.
 - **Białe kreski** to dary z ostatniego kroku. W lewym świecie są krótkie, od dawcy do sąsiada. W prawym biegną przez całą mapę.
 - **Wykres na dole** pokazuje odsetek śmierci, które są poświęceniem, uśredniony po porze roku, za cały przebieg.
+- **Panele boczne** (klawisz `H` je chowa): przy każdym świecie histogram odcieni kolorów rodów w danej chwili i historia odcieni w czasie (czas w dół, trwałe rody to pionowe pasy).
+- **Tryb kolorowania „family map (yearly)”** (klawisz `C`): zamiast kropek mapa rodów, odświeżana raz na rok w szczycie lata.
 - **Klawisze:**
   - `SPACJA` pauza, `↑/↓` szybkość, `R` restart,
   - `C` zmienia kolorowanie (np. energia),
