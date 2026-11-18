@@ -1,83 +1,157 @@
 # kin-dots
 
-Ewolucyjna symulacja kropek-agentów, które jedzą, walczą, rozmnażają się i mogą (ale nie muszą) wyewoluować altruizm. Nic w regułach nie każe im pomagać krewnym. Sprawdzamy, czy i dlaczego zaczną to robić.
+An evolution simulation of dot agents that eat, reproduce and die, and that may (or may not) evolve altruism. Nothing in the rules tells them to help relatives, and they cannot recognise relatives. We check whether they start doing it anyway, and why.
 
-Szczegóły modelu, metryki, eksperymenty i kamienie milowe: [PLAN.md](PLAN.md).
+**Main result: self-sacrifice.** A dot can give all its energy to a neighbour and die. Two genes decide how likely it is to do so. Over ~30,000 steps this rises from ~5% to **~70% of all deaths** when the gift goes to a neighbour (usually a relative). In the control, where the gift goes to a random dot anywhere on the map, it stays at **5–10%**. The two worlds differ in that one rule only.
 
-**Najlepsze demo: [DEMO.md](DEMO.md).** Kropki, w których o poświęceniu decydują dwa geny, ewoluują od ~5% do ~70% śmierci przez poświęcenie za sąsiada, a w kontroli (dar dla obcego) nie. **Status:** M3 gotowy, dodane drapieżniki i krzyk ostrzegawczy. Dzielenie się z krewnymi i powściągliwość wobec krewnych ewoluują, a ich źródłem jest pokrewieństwo (kontrole). Krzyk ostrzegawczy: wynik niejednoznaczny. Szczegóły: sekcja 8 w [PLAN.md](PLAN.md). Nowy wariant: dwa gatunki z frontem, walką tylko z obcymi i obroną krewnych.
+- Explainer for newcomers: [docs/dots-that-give-their-lives.md](docs/dots-that-give-their-lives.md).
+- Full demo description, numbers, robustness checks and caveats (in Polish): [DEMO.md](DEMO.md).
+- Model design, metrics, all experiments and milestones (in Polish): [PLAN.md](PLAN.md), section 8 for the experiment log.
 
-## Instalacja
+![The two demo worlds side by side](docs/demo_compare.png)
 
-Natywny Python 3.12 przez [uv](https://docs.astral.sh/uv/) (`brew install uv`):
+**Other threads** (described in PLAN.md):
+
+- Sharing with kin and restraint towards kin also evolve, and the controls show that relatedness is what drives them.
+- Alarm calls against predators: the result was inconclusive.
+- Two species with a front line, fighting only the other species and defending kin: parked.
+
+## Installation
+
+Native Python 3.12 via [uv](https://docs.astral.sh/uv/) (`brew install uv`):
 
 ```bash
 uv venv --python 3.12 .venv
 uv pip install --python .venv -e ".[dev]"
 ```
 
-## Uruchomienie
+On Apple Silicon use a native (arm64) Python. An x86 Python under Rosetta crashes in Numba.
 
-Podgląd na żywo (pygame):
+## The self-sacrifice demo
 
-```bash
-.venv/bin/python -m kin_dots.viz.app
-```
-
-Klawisze: `SPACE` pauza, `→` jeden krok, `↑/↓` szybkość, `C` kolorowanie (znacznik / gatunek / p(dzielenie się z krewnym) / p(atak na obcego) / p(krzyk przy krewnych) / p(obrona krewnego) / gen harvest / energia), `F` warstwa jedzenia, `R` restart, `N` nowe ziarno, `Esc` wyjście.
-
-Bez grafiki, zapis szeregu czasowego do CSV:
+Two worlds side by side, same start and same random seed. Left: the gift goes to a neighbour. Right: the control, where the gift goes to a stranger.
 
 ```bash
-.venv/bin/python -m kin_dots.experiments.run --steps 5000 --out results/run.csv
+./demo.sh            # seed 0, up to 64 steps per frame
+./demo.sh 3 128      # seed 3, up to 128 steps per frame
 ```
 
-Obie komendy przyjmują `--config configs/default.yaml` (lub własny YAML) i `--seed N`.
+What you see:
 
-Gotowe presety w `configs/` (opis w sekcji 8 w [PLAN.md](PLAN.md)):
+- Each world, with its population. Next to the count are last year's mean, min and max.
+- The **share of deaths that are self-sacrifice**: all sacrifices of the last year divided by all deaths of the last year.
+- Side panels with the **family colours**: a hue histogram now, and the same histogram over the whole run (time runs downward; a vertical band is one family).
+- Two plots over the whole run: the sacrifice share, and the raw population.
 
-- `kin_altruism.yaml`: warunek, w którym ewoluuje dzielenie się z krewnymi.
-- `kin_altruism_random_recipient.yaml`: kontrola z biorcą losowanym z całej mapy, w której altruizm znika.
-- `kin_altruism_tagblind.yaml`: kontrola, w której dzielenie się nie widzi koloru.
-- `kin_restraint.yaml`: wariant z walkami, w którym ewoluuje powściągliwość wobec krewnych.
-- `two_species.yaml` / `two_species_fights_within.yaml`: dwa gatunki (kropki i kwadraty), walka tylko z obcym gatunkiem, obrona sąsiada; druga wersja to kontrola.
-- `kin_alarm.yaml` / `kin_alarm_random_warn.yaml`: drapieżniki (czerwone trójkąty) i krzyk ostrzegawczy (białe kółka); druga wersja to kontrola.
+Keys:
+
+| key | action |
+|---|---|
+| `SPACE` | pause |
+| `↑` / `↓` | faster / slower |
+| `C` | colour mode: `p(give)`, `energy`, `tag` (inherited family colour), `family map (yearly)` |
+| `F` | show / hide grass |
+| `G` | show / hide the gifts of the last step (white lines) |
+| `H` | show / hide the side panels |
+| `R` | restart with the same seed |
+| `Esc` / `Q` | quit |
+
+A clear difference shows after ~10,000 steps, a few minutes at speed 64. The window fits the screen and the simulation runs in a fixed time budget per frame, so the window stays responsive. If a world dies out in the first winters (an unlucky seed), start with another seed.
+
+There is also a port as an app for [Evolife](https://evolife.telecom-paris.fr) (J.-L. Dessalles's framework). It is not part of this repository; on this machine it lives in `~/Desktop/Evolife/Apps/KinSacrifice` (see its `Help.txt`).
+
+## Figures and analyses
+
+All figures are in `docs/`. Every script prints its own usage at the top of the file.
+
+| figure | what it shows | made by |
+|---|---|---|
+| `demo_sacrifice.png` | share of deaths that are sacrifice, gene `b`, yearly mean population | `kin_dots.experiments.sweep` + `analysis/plot_sacrifice.py` |
+| `demo_sacrifice_genes.png` | gene `a`, and p(sacrifice) as a function of own energy over time | `analysis/sacrifice_genes.py` |
+| `demo_population.png` | raw population at every step | `analysis/population_runs.py` + `analysis/plot_population.py` |
+| `demo_age_at_death.png`, `..._detail.png` | age at death by cause (sacrifice / hunger / old age), mean vs median, children before death, time of year | `analysis/age_at_death.py` |
+| `demo_sacrifice_rate.png` | sacrifices per dot per step: through the year, over the run, by age | `analysis/age_at_death.py` |
+| `demo_tags_yearly.gif` | yearly map of family colours over 150 years, with hue strips | `analysis/tag_movie.py` |
+
+For example, to rebuild the main figure (~8 minutes on 6 cores):
+
+```bash
+.venv/bin/python -m kin_dots.experiments.sweep --steps 30000 --seeds 0 1 2 --windows 50 --procs 6 --out results/demo_curves \
+  --cond-config sacrifice-local configs/demo_sacrifice.yaml --cond-config sacrifice-strangers configs/demo_sacrifice_strangers.yaml
+.venv/bin/python analysis/plot_sacrifice.py results/demo_curves docs/demo_sacrifice.png
+```
+
+## The general simulation
+
+Single-world live view (pygame):
 
 ```bash
 .venv/bin/python -m kin_dots.viz.app --config configs/kin_altruism.yaml --speed 16
 ```
 
-Dwa światy obok siebie (ten sam start, różnią się jedną regułą), z wspólnym wykresem całego przebiegu:
+Keys:
+
+- `SPACE` pause, `→` one step (when paused), `↑/↓` speed.
+- `C` colour mode: `tag`, `species`, `p(share|kin)`, `p(attack|stranger)`, `p(alarm|kin)`, `p(defend|kin)`, `harvest`, `energy`.
+- `F` food layer, `G` gifts, `R` restart, `N` new seed, `Esc` quit.
+
+Headless, writing a time series to CSV:
+
+```bash
+.venv/bin/python -m kin_dots.experiments.run --steps 5000 --out results/run.csv
+```
+
+Both commands take `--config <file.yaml>` (default parameters otherwise) and `--seed N`.
+
+Two worlds side by side with any pair of presets:
 
 ```bash
 .venv/bin/python -m kin_dots.viz.compare --left configs/kin_altruism.yaml --right configs/kin_altruism_random_recipient.yaml \
-  --left-label "pomoc sąsiadowi" --right-label "pomoc losowej kropce" --metric share_rate --speed 16
+  --left-label "help a neighbour" --right-label "help a random dot" --metric share_rate --speed 16
 ```
 
-Porównanie wielu warunków i ziaren naraz (równolegle; `--table kin` pokazuje metryki pokrewieństwa, `--table behaviour` geny i zachowanie, `--table pred` drapieżniki i krzyk, `--table species` gatunki i obrona):
+Many conditions and seeds in parallel, with a comparison table. `--table` picks the columns: `kin` relatedness metrics, `behaviour` genes and behaviour, `pred` predators and alarm calls, `species` species and defence.
 
 ```bash
 .venv/bin/python -m kin_dots.experiments.sweep --steps 40000 --seeds 0 1 2 \
   --cond kin season_period=600 season_amplitude=0.9 move_speed=0.1 attacks_enabled=False \
-  --cond kontrola season_period=600 season_amplitude=0.9 move_speed=0.1 attacks_enabled=False share_to_random=True
+  --cond control season_period=600 season_amplitude=0.9 move_speed=0.1 attacks_enabled=False share_to_random=True
 ```
 
-Testy:
+Run sweeps from a file or the command line, not from stdin: on macOS, multiprocessing from stdin hangs.
+
+### Presets in `configs/`
+
+- `demo_sacrifice.yaml` / `demo_sacrifice_strangers.yaml`: the self-sacrifice demo and its control.
+- `kin_altruism.yaml`: sharing with kin evolves.
+- `kin_altruism_random_recipient.yaml`: control where the recipient is drawn from the whole map; altruism disappears.
+- `kin_altruism_tagblind.yaml`: control where the sharing decision cannot see colour.
+- `kin_restraint.yaml`: a variant with fights in which restraint towards kin evolves.
+- `kin_alarm.yaml` / `kin_alarm_random_warn.yaml`: predators (red triangles) and alarm calls (white circles); the second is the control.
+- `two_species.yaml` / `two_species_fights_within.yaml`: two species (dots and squares), fighting only the other species, defending a neighbour; the second is the control.
+- `default.yaml`: the defaults.
+
+## Tests
 
 ```bash
 .venv/bin/pytest
 ```
 
-## Układ kodu
+The tests cover determinism (same seed, same run), exact energy and food bookkeeping, the kinship metrics, predators and the two-species variant.
 
-- `kin_dots/core/params.py`: wszystkie parametry (`Params`).
-- `kin_dots/core/genome.py`: układ genomu (które kolumny to które geny).
-- `kin_dots/core/world.py`: stan jako tablice NumPy i krok symulacji.
-- `kin_dots/core/kernels.py`: funkcje Numby (sąsiedzi, dzielenie się, walki, ruch społeczny).
-- `kin_dots/core/genealogy.py`: drzewo genealogiczne i dziennik interakcji.
-- `kin_dots/core/kinship.py`: metryki M3 (pokrewieństwo, Hamilton, Price, klany i oszuści).
-- `kin_dots/core/predation.py`: drapieżniki, wykrywanie, krzyk ostrzegawczy (Numba).
-- `kin_dots/viz/app.py`: okno pygame.
-- `kin_dots/experiments/run.py`: runner bez grafiki.
-- `kin_dots/experiments/sweep.py`: wiele warunków i ziaren równolegle, tabela porównawcza.
-- `configs/`: presety parametrów.
-- `tests/`: testy determinizmu, bilansu energii i jedzenia oraz poprawności stanu.
+## Code layout
+
+- `kin_dots/core/params.py`: all parameters (`Params`).
+- `kin_dots/core/genome.py`: genome layout (which columns are which genes).
+- `kin_dots/core/world.py`: state as NumPy arrays and the simulation step.
+- `kin_dots/core/kernels.py`: Numba kernels (neighbours, sharing and sacrifice, fights, social movement).
+- `kin_dots/core/genealogy.py`: family tree and interaction log.
+- `kin_dots/core/kinship.py`: kinship metrics (relatedness, Hamilton's rule, Price equation, clans and cheaters).
+- `kin_dots/core/predation.py`: predators, detection, alarm calls (Numba).
+- `kin_dots/viz/app.py`: single-world pygame window.
+- `kin_dots/viz/compare.py`: two worlds side by side (the demo viewer).
+- `kin_dots/experiments/run.py`: headless runner.
+- `kin_dots/experiments/sweep.py`: many conditions and seeds in parallel, comparison table.
+- `analysis/`: scripts behind the figures in `docs/`.
+- `configs/`: parameter presets.
+- `tests/`: determinism, energy and food balance, state consistency.
