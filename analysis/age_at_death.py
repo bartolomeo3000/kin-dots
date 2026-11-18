@@ -295,6 +295,134 @@ def plot_detail(runs, out: Path, t0: int):
     print("saved", out)
 
 
+def per_capita(r):
+    """Per-step deaths by cause and population just before each step (index = step)."""
+    pop = r["pop"].astype(float)
+    T = int(np.flatnonzero(pop)[-1]) + 1 if pop.any() else 0
+    before = np.concatenate([[np.nan], pop[: T - 1]])  # population at the start of step t
+    counts = {c: np.bincount(r["step"][r["cause"] == c], minlength=T)[:T].astype(float) for c in CAUSES}
+    return before, counts
+
+
+def plot_rate(runs, out: Path, t0: int):
+    """How likely is a dot to sacrifice itself, per step: sacrifices / population.
+    Unlike the share of deaths, this does not depend on how many die of other causes."""
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+
+    K = 1000.0  # rates per 1000 dots per step
+    fig = plt.figure(figsize=(16, 10))
+    gs = fig.add_gridspec(2, 3, hspace=0.42, wspace=0.5)
+    ax_a = fig.add_subplot(gs[0, 0])
+    ax_b = [fig.add_subplot(gs[0, 1]), fig.add_subplot(gs[0, 2])]
+    ax_d = fig.add_subplot(gs[1, :2])
+    ax_e = fig.add_subplot(gs[1, 2])
+    pb = np.arange(0, 601, 10)
+    print(f"== per-capita rates (per {K:.0f} dots per step), steps >= {t0}")
+
+    def by_phase(before, cnt, season):
+        t = np.arange(t0, before.size)
+        ph = t % season
+        num = np.histogram(ph, pb, weights=cnt[t])[0]
+        den = np.histogram(ph, pb, weights=before[t])[0]
+        return num, den
+
+    for cond, rs in runs.items():
+        _, label, col = CONDS[cond]
+        season = int(rs[0]["season"])
+        tot = {c: [0, 0] for c in CAUSES}
+        pop_num = pop_den = 0
+        for r in rs:
+            before, counts = per_capita(r)
+            num, den = by_phase(before, counts[SACRIFICE], season)
+            ax_a.plot(pb[:-1] + 5, K * num / den, color=col, lw=0.6, alpha=0.35)
+            for c in CAUSES:
+                n_, d_ = by_phase(before, counts[c], season)
+                tot[c][0] = tot[c][0] + n_
+                tot[c][1] = tot[c][1] + d_
+            t = np.arange(t0, before.size)
+            pop_num = pop_num + np.histogram(t % season, pb, weights=before[t])[0]
+            pop_den = pop_den + np.histogram(t % season, pb)[0]
+        sac = K * tot[SACRIFICE][0] / tot[SACRIFICE][1]
+        ax_a.plot(pb[:-1] + 5, sac, color=col, lw=2.4, label=label)
+        whole = K * tot[SACRIFICE][0].sum() / tot[SACRIFICE][1].sum()
+        summer = K * tot[SACRIFICE][0][:30].sum() / tot[SACRIFICE][1][:30].sum()
+        winter = K * tot[SACRIFICE][0][30:].sum() / tot[SACRIFICE][1][30:].sum()
+        print(f"   {label:22s} sacrifice: {whole:.2f} overall, {summer:.2f} in steps 0-300, {winter:.2f} in 300-600;"
+              f" peak {sac.max():.2f} at step {pb[np.argmax(sac)] + 5};  "
+              + ", ".join(f"{CAUSES[c][0]} {K * tot[c][0].sum() / tot[c][1].sum():.2f}" for c in CAUSES))
+        ax = ax_b[list(runs).index(cond)]
+        for c in CAUSES:
+            ax.plot(pb[:-1] + 5, K * tot[c][0] / tot[c][1], color=CAUSES[c][1], lw=2, label=CAUSES[c][0])
+        axp = ax.twinx()
+        axp.fill_between(pb[:-1] + 5, pop_num / pop_den, color=col, alpha=0.12, lw=0)
+        axp.set_ylabel("mean population (shaded)", color=col)
+        axp.set_ylim(0, 9000)
+        ax.set_zorder(axp.get_zorder() + 1)
+        ax.patch.set_visible(False)
+        ax.set_title(f"{label}: all causes, per capita", color=col, fontweight="bold")
+
+    for ax in [ax_a] + ax_b:
+        ax.axvspan(300, 600, color="#5fa8ff", alpha=0.10)
+        ax.set_xlim(0, 600)
+        ax.set_xlabel("step within the year (shaded: winter half)")
+        ax.set_ylabel(f"deaths per {K:.0f} dots per step")
+    ax_a.set_title("Self-sacrifice per capita through the year\n(thin: single runs, thick: all runs)")
+    ax_a.set_ylim(0, None)
+    ax_a.legend(fontsize=8)
+    top = max(a.get_ylim()[1] for a in ax_b)
+    for a in ax_b:
+        a.set_ylim(0, top)
+        a.legend(fontsize=8, loc="upper left")
+
+    # D: yearly per-capita sacrifice rate over the whole run
+    for cond, rs in runs.items():
+        _, label, col = CONDS[cond]
+        season = int(rs[0]["season"])
+        curves = []
+        for r in rs:
+            before, counts = per_capita(r)
+            yr = np.arange(1, before.size) // season
+            num = np.bincount(yr, weights=counts[SACRIFICE][1:])
+            den = np.bincount(yr, weights=before[1:])
+            c = K * num / np.where(den > 0, den, np.nan)
+            curves.append(c)
+            ax_d.plot(np.arange(c.size) * season, c, color=col, lw=0.6, alpha=0.35)
+        L = min(c.size for c in curves)
+        ax_d.plot(np.arange(L) * season, np.nanmean([c[:L] for c in curves], axis=0), color=col, lw=2.4,
+                  label=label)
+    ax_d.set_ylim(0, None)
+    ax_d.set_xlabel("step")
+    ax_d.set_ylabel(f"sacrifices per {K:.0f} dots per step\n(averaged over each year)")
+    ax_d.set_title("Tendency to self-sacrifice over the run (sacrifices / population, per year)")
+    ax_d.legend(fontsize=9)
+
+    # E: per-step probability of self-sacrifice at a given age (life table from the deaths)
+    ab = np.arange(0, 305, 5)
+    for cond, rs in runs.items():
+        _, label, col = CONDS[cond]
+        age = np.concatenate([r["age"][r["step"] >= t0] for r in rs]).astype(int)
+        cause = np.concatenate([r["cause"][r["step"] >= t0] for r in rs])
+        alive_at = np.cumsum(np.bincount(age, minlength=302)[::-1])[::-1]  # dots that reach each age
+        for c, ls in ((SACRIFICE, "-"), (HUNGER, ":")):
+            d = np.bincount(age[cause == c], minlength=302)
+            num = np.add.reduceat(d[:300], ab[:-1])
+            den = np.add.reduceat(alive_at[:300], ab[:-1])
+            ax_e.plot(ab[:-1] + 2.5, K * num / den, ls, color=col, lw=2 if c == SACRIFICE else 1.4,
+                      label=f"{label}: {CAUSES[c][0]}")
+    ax_e.set_ylim(0, None)
+    ax_e.set_xlabel("age (steps)")
+    ax_e.set_ylabel(f"deaths per {K:.0f} dots of that age per step")
+    ax_e.set_title("Per-capita rate by age\n(dots of age a that die at age a / dots reaching age a)")
+    ax_e.legend(fontsize=7.5)
+
+    fig.suptitle(f"Tendency to self-sacrifice: sacrifices per dot per step (steps after {t0} unless noted)",
+                 fontsize=14, y=0.995)
+    fig.savefig(out, dpi=110, bbox_inches="tight")
+    print("saved", out)
+
+
 def main():
     mode, d = sys.argv[1], Path(sys.argv[2])
     if mode == "run":
@@ -313,6 +441,7 @@ def main():
             out = Path(sys.argv[3])
             plot(runs, out, t0)
             plot_detail(runs, out.with_name(out.stem + "_detail" + out.suffix), t0)
+            plot_rate(runs, out.with_name(out.stem.replace("age_at_death", "sacrifice_rate") + out.suffix), t0)
 
 
 if __name__ == "__main__":
