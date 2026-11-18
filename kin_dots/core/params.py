@@ -5,6 +5,7 @@ same params always reproduce the same simulation.
 """
 from __future__ import annotations
 
+import ast
 import dataclasses
 from dataclasses import dataclass
 from pathlib import Path
@@ -141,3 +142,36 @@ class Params:
     def to_yaml(self, path: Union[str, Path]) -> None:
         with open(path, "w") as f:
             yaml.safe_dump(self.to_dict(), f, sort_keys=False)
+
+
+def parse_overrides(items) -> Dict[str, Any]:
+    """Turn ["key=value", ...] into {key: value}, checking names and types against Params.
+
+    Values are Python literals (0.7, 300, True); anything else stays a string.
+    Raises ValueError on an unknown name or a value of the wrong type."""
+    defaults = Params()
+    out: Dict[str, Any] = {}
+    for kv in items:
+        if "=" not in kv:
+            raise ValueError(f"expected KEY=VALUE, got {kv!r}")
+        k, v = kv.split("=", 1)
+        try:
+            val = ast.literal_eval(v)
+        except (ValueError, SyntaxError):
+            val = v
+        if not hasattr(defaults, k):
+            raise ValueError(f"unknown parameter: {k}")
+        ref = getattr(defaults, k)
+        if isinstance(ref, bool):
+            ok = isinstance(val, bool)
+        elif isinstance(ref, (int, float)):
+            ok = isinstance(val, (int, float)) and not isinstance(val, bool)
+            if ok and isinstance(ref, int) and not isinstance(val, int):
+                ok = float(val).is_integer()
+                val = int(val)
+        else:
+            ok = isinstance(val, type(ref))
+        if not ok:
+            raise ValueError(f"bad value for {k}: {v!r} (default is {ref!r})")
+        out[k] = val
+    return out

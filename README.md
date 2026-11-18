@@ -56,6 +56,32 @@ Keys:
 
 A clear difference shows after ~10,000 steps, a few minutes at speed 64. The window fits the screen and the simulation runs in a fixed time budget per frame, so the window stays responsive. If a world dies out in the first winters (an unlucky seed), start with another seed.
 
+### Changing the parameters
+
+To see whether self-sacrifice still evolves in a different world, pass `--set` with any parameters. They apply to **both** worlds, so the two still differ by one rule only:
+
+```bash
+./demo.sh --set season_amplitude=0.7                  # milder winters
+./demo.sh 3 --set move_speed=0.2 dispersal_sd=4       # seed 3, more mixing of families
+```
+
+The window title shows the overrides, and a misspelt name or a value of the wrong type stops with an error. The demo's own settings are in [`configs/demo_sacrifice.yaml`](configs/demo_sacrifice.yaml). The control, [`configs/demo_sacrifice_strangers.yaml`](configs/demo_sacrifice_strangers.yaml), is the same file plus `share_to_random: true`. Every parameter, with its default and a one-line meaning, is in [`kin_dots/core/params.py`](kin_dots/core/params.py). The ones most worth playing with:
+
+| parameter | demo value | meaning | Evolife name |
+|---|---|---|---|
+| `season_amplitude` | 0.9 | how harsh winter is (0 = no seasons; grass grows with 1 + A·sin) | `WinterHarshness` |
+| `season_period` | 600 | steps in a year | `SeasonLength` |
+| `move_speed` | 0.1 | distance a dot moves per step | `Speed` |
+| `dispersal_sd` | 2 | how far from its parent a child is born | `ChildSpread` |
+| `interaction_radius` | 4 | how close a neighbour must be to be met | `MeetRadius` |
+| `share_benefit` | 0.9 | share of the giver's energy that reaches the recipient | `GiftEfficiency` |
+| `max_age` | 300 | death by old age | `MaxAge` |
+| `birth_threshold` | 20 | energy needed to split in two | `BirthThreshold` |
+| `food_growth`, `food_inflow` | 0.05, 0.1 | how fast grass regrows | `GrassGrowth`, `GrassInflow` |
+| `founder_share_bias` | -9 | starting value of gene `a` | `InitialA` |
+| `weight_mutation_sd` | 0.15 | mutation size of genes `a`, `b` and the other behaviour genes | `MutationSD` |
+| `init_agents` | 2500 | starting population | `InitialPopulation` |
+
 ### Evolife version
 
 [`evolife/KinSacrifice/`](evolife/KinSacrifice) is the same demo as an app for [Evolife](https://evolife.telecom-paris.fr) (J.-L. Dessalles's framework). It is a standalone NumPy port and does not use the `kin_dots` package. To use it:

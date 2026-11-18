@@ -4,7 +4,11 @@
         --right configs/kin_altruism_random_recipient.yaml --metric share_rate
 
 Both worlds advance in lockstep. Below them, one plot shows the chosen metric
-for both (left = yellow, right = cyan): its mean over the last full season.
+for both (left = yellow, right = cyan) over the last year, and one the raw population.
+
+    --set KEY=VAL [KEY=VAL ...]   change parameters in BOTH worlds, e.g.
+                                  --set season_amplitude=0.7 move_speed=0.2
+                                  (names and meanings: kin_dots/core/params.py)
 
 Keys: SPACE pause, UP/DOWN max steps per frame, C colour mode, F food layer, G energy gifts
 (white lines donor -> recipient), H side panels, R restart, ESC quit.
@@ -32,6 +36,7 @@ os.environ.setdefault("PYGAME_HIDE_SUPPORT_PROMPT", "1")
 import pygame  # noqa: E402
 
 from kin_dots.core import Params, World  # noqa: E402
+from kin_dots.core.params import parse_overrides  # noqa: E402
 from kin_dots.core import genome as G  # noqa: E402
 
 VIEW = 540          # world view size in pixels (recomputed to fit the screen in main())
@@ -306,14 +311,22 @@ def main(argv=None) -> int:
     ap.add_argument("--color", choices=COLOR_MODES, default=COLOR_MODES[0])
     ap.add_argument("--frames", type=int, default=0)
     ap.add_argument("--screenshot", type=Path)
+    ap.add_argument("--set", nargs="+", default=[], metavar="KEY=VAL",
+                    help="parameter overrides applied to both worlds (see kin_dots/core/params.py)")
     args = ap.parse_args(argv)
+    try:
+        overrides = parse_overrides(args.set)
+    except ValueError as e:
+        ap.error(str(e))
 
-    sides = [Side(Params.from_yaml(args.left).replace(seed=args.seed),
+    sides = [Side(Params.from_yaml(args.left).replace(seed=args.seed, **overrides),
                   args.left_label or args.left.stem),
-             Side(Params.from_yaml(args.right).replace(seed=args.seed),
+             Side(Params.from_yaml(args.right).replace(seed=args.seed, **overrides),
                   args.right_label or args.right.stem)]
+    if overrides:
+        print("both worlds:", "  ".join(f"{k}={v}" for k, v in overrides.items()))
     pygame.init()
-    pygame.display.set_caption("kin-dots: compare")
+    pygame.display.set_caption("kin-dots: compare" + ("   [" + "  ".join(args.set) + "]" if args.set else ""))
     global VIEW
     if args.view > 0:
         VIEW = args.view

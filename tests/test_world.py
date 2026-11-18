@@ -277,3 +277,15 @@ def test_ledger_balances_with_sacrifice():
               + L["predation_gain"] - L["alarm_cost"] - L["predated_energy"] - L["garden_cost"])
         assert w.total_energy() - e0 == pytest.approx(de, abs=1e-6)
     assert w.total_sacrificed > 0
+
+
+def test_parse_overrides():
+    import pytest
+    from kin_dots.core.params import parse_overrides
+
+    assert parse_overrides(["season_amplitude=0.7", "max_age=200", "attacks_enabled=False"]) == {
+        "season_amplitude": 0.7, "max_age": 200, "attacks_enabled": False}
+    assert parse_overrides(["move_speed=1"]) == {"move_speed": 1}  # int is fine for a float
+    for bad in (["no_such_param=1"], ["max_age=abc"], ["attacks_enabled=1"], ["max_age=2.5"], ["move_speed"]):
+        with pytest.raises(ValueError):
+            parse_overrides(bad)
