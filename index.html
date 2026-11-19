@@ -259,7 +259,14 @@ button.ctl:focus-visible, button.nav:focus-visible { outline: 3px solid var(--ki
 #s-close .veil { position: absolute; inset: 0; background: radial-gradient(90% 75% at 35% 50%, rgba(11,17,18,.94) 30%, rgba(11,17,18,.5) 65%, rgba(11,17,18,0) 90%); }
 #s-close > *:not(canvas):not(.veil) { position: relative; }
 #s-close .big { font-family: var(--font-display); font-size: 140px; line-height: .98; letter-spacing: -.035em; font-variation-settings: "opsz" 144, "SOFT" 60; max-width: 1500px; }
-#s-close .cmd { font-family: var(--font-mono); font-size: 34px; background: var(--ink-2); border: 1px solid var(--rule); border-radius: 14px; padding: 18px 28px; color: var(--kin); }
+.play-cta {
+  font-family: var(--font-display); font-size: 64px; line-height: 1; letter-spacing: -.01em; font-variation-settings: "opsz" 144, "SOFT" 50;
+  color: #1d1406; background: var(--kin); text-decoration: none; white-space: nowrap;
+  padding: 30px 54px; border-radius: 999px; box-shadow: 0 24px 70px rgba(243, 181, 74, .28);
+  transition: transform .25s cubic-bezier(.2, .8, .2, 1), box-shadow .25s;
+}
+.play-cta:hover { transform: translateY(-3px) scale(1.02); box-shadow: 0 30px 90px rgba(243, 181, 74, .4); }
+.play-cta:focus-visible { outline: 4px solid var(--paper); outline-offset: 6px; }
 
 @media (prefers-reduced-motion: reduce) {
   .slide.active, .slide.leaving, .slide.active [data-a], .slide.active .not::after { animation-duration: 1ms !important; animation-delay: 0ms !important; }
@@ -518,14 +525,14 @@ button.ctl:focus-visible, button.nav:focus-visible { outline: 3px solid var(--ki
 
 
     <!-- 17 -->
-    <section class="slide" id="s-close" data-notes="The take-away: nobody here acts for the good of the species. Selection acts on genes, and in a world where neighbours are family, a gene for giving yourself up to a neighbour is a gene for helping copies of itself. Invite people to run it and change the parameters.">
+    <section class="slide" id="s-close" data-notes="The take-away: nobody here acts for the good of the species. Selection acts on genes, and in a world where neighbours are family, a gene for giving yourself up to a neighbour is a gene for helping copies of itself. Invite people to open the playground and change the world themselves.">
       <canvas id="close-canvas" aria-hidden="true"></canvas>
       <div class="veil"></div>
       <div class="eyebrow" data-a="fade">Take-away</div>
       <p class="big" data-a="blur" style="--d:150">Selection acts on genes. Altruism is a <em class="ember">by-product</em>.</p>
-      <div class="row" data-a style="--d:700; align-items:center; margin-top:30px">
-        <span class="cmd">./demo.sh --set season_amplitude=0.7</span>
-        <span class="small">Run it yourself from the kin-dots repository, and change the world.</span>
+      <div class="row" data-a style="--d:700; align-items:center; margin-top:44px; gap:40px">
+        <a class="play-cta" href="play/">Play with the model <span aria-hidden="true">→</span></a>
+        <p class="small">Change the world and watch, live, whether self-sacrifice still evolves.<br><span class="mono">bartolomeo3000.github.io/kin-dots/play</span></p>
       </div>
     </section>
 
