@@ -98,6 +98,9 @@ The demo's own settings are in [`configs/demo_sacrifice.yaml`](configs/demo_sacr
 | `founder_share_bias` | -9 | starting value of gene `a` | `InitialA` |
 | `weight_mutation_sd` | 0.15 | mutation size of genes `a`, `b` and the other behaviour genes | `MutationSD` |
 | `init_agents` | 2500 | starting population | `InitialPopulation` |
+| `fertility_map` | `none` | `noise`: grass regrows faster in some places, like a relief map (smoothed random field, mean 1) | – |
+| `fertility_contrast`, `fertility_scale` | 1.0, 40 | how strong and how large the fertile and barren patches are | – |
+| `fertility_memory` | 1.0 | how the map changes each year: 1 = fixed, 0 = a new map, between = drifting | – |
 
 ### Evolife version
 
@@ -123,6 +126,7 @@ All figures are in `docs/`. Every script prints its own usage at the top of the 
 | `demo_age_at_death.png`, `..._detail.png` | age at death by cause (sacrifice / hunger / old age), mean vs median, children before death, time of year | `analysis/age_at_death.py` |
 | `demo_sacrifice_rate.png` | sacrifices per dot per step: through the year, over the run, by age | `analysis/age_at_death.py` |
 | `demo_tags_yearly.gif` | yearly map of family colours over 150 years, with hue strips | `analysis/tag_movie.py` |
+| `fertility.png` | self-sacrifice on a patchy landscape: fixed, drifting and yearly redrawn fertility maps vs a uniform one | `analysis/fertility_runs.py` + `analysis/plot_fertility.py` |
 
 For example, to rebuild the main figure (~8 minutes on 6 cores):
 

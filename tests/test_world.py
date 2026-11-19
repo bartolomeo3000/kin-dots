@@ -289,3 +289,31 @@ def test_parse_overrides():
     for bad in (["no_such_param=1"], ["max_age=abc"], ["attacks_enabled=1"], ["max_age=2.5"], ["move_speed"]):
         with pytest.raises(ValueError):
             parse_overrides(bad)
+
+
+def test_landscape_off_by_default():
+    from kin_dots.core.world import World
+    from kin_dots.core.params import Params
+    assert World(Params(init_agents=50)).landscape.grid is None
+
+
+def test_landscape_shared_between_demo_and_control_and_changes_yearly():
+    import numpy as np
+    from kin_dots.core.landscape import Landscape
+    from kin_dots.core.params import Params
+    base = dict(seed=3, grid_cells=80, world_size=320.0, season_period=100, fertility_map="noise",
+                fertility_scale=8.0, fertility_contrast=1.0)
+    a, b = Landscape(Params(**base)), Landscape(Params(**base, share_to_random=True))
+    assert np.allclose(a.grid, b.grid)                      # same seed -> same map in both worlds
+    assert abs(a.grid.mean() - 1.0) < 1e-9 and a.grid.min() > 0
+    static = Landscape(Params(**base))
+    g0 = static.grid.copy(); static.update(100)
+    assert np.allclose(static.grid, g0)                     # memory 1: never changes
+    redraw = Landscape(Params(**base, fertility_memory=0.0))
+    z0 = redraw.z.copy(); redraw.update(50)
+    assert np.allclose(redraw.z, z0)                        # only at the start of a year
+    redraw.update(100)
+    assert abs(np.corrcoef(z0.ravel(), redraw.z.ravel())[0, 1]) < 0.3
+    drift = Landscape(Params(**base, fertility_memory=0.8))
+    z0 = drift.z.copy(); drift.update(100)
+    assert 0.6 < np.corrcoef(z0.ravel(), drift.z.ravel())[0, 1] < 0.95

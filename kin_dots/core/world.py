@@ -29,6 +29,7 @@ from . import genome as G
 from . import kernels as K
 from . import predation as PR
 from .genealogy import EV_ALARM, EV_RANDOM, EventLog, Genealogy
+from .landscape import Landscape
 from .params import Params
 
 RANDOM_PAIRS_PER_STEP = 64  # baseline pairs logged each step for relatedness metrics
@@ -77,6 +78,7 @@ class World:
         n = p.grid_cells
         self.food = np.full((n, n), p.food_capacity * p.food_init_frac)
         self.fertility = np.zeros((n, n))  # gardening: multiplies the food regrowth rate by (1 + f)
+        self.landscape = Landscape(p)      # fertility map: grid of regrowth multipliers, or None
 
         self.step_count = 0
         self.next_id = 0
@@ -422,6 +424,9 @@ class World:
         before = self.food.sum()
         f = self.food
         s = self.season_factor()
+        self.landscape.update(self.step_count)
+        if self.landscape.grid is not None:
+            s = s * self.landscape.grid  # local regrowth rate (mean 1 over the map)
         if p.garden_enabled:
             f += s * (p.food_growth * (1.0 + self.fertility) * f * (1.0 - f / p.food_capacity)
                       + p.food_inflow)

@@ -63,6 +63,15 @@ class Params:
                                         # map instead of the neighbour met (same ecology, no kinship)
     weight_clip: float = 10.0           # decision/movement weights are kept in [-clip, clip]
 
+    # --- fertility landscape (see core/landscape.py) ---
+    fertility_map: str = "none"         # "noise": grass regrows at a rate that varies in space
+                                        # (a smoothed random field, mean 1, like a relief map)
+    fertility_scale: float = 40.0       # size of the fertile and barren patches (world units)
+    fertility_contrast: float = 1.0     # sd of log-fertility: 0 = uniform, 1 = strong patches
+    fertility_memory: float = 1.0       # at each change: 1 = map never changes, 0 = a new map,
+                                        # in between = the map drifts
+    fertility_period: int = 0           # steps between changes; 0 = once a year (season_period)
+
     # --- gardening (a public good) ---
     garden_enabled: bool = False        # agents may spend energy to fertilise the cell below them
     garden_max: float = 0.05            # energy per step at garden gene = 1
