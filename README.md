@@ -129,6 +129,7 @@ All figures are in `docs/`. Every script prints its own usage at the top of the 
 | `demo_sacrifice_rate.png` | sacrifices per dot per step: through the year, over the run, by age | `analysis/age_at_death.py` |
 | `demo_tags_yearly.gif` | yearly map of family colours over 150 years, with hue strips | `analysis/tag_movie.py` |
 | `fertility.png` | self-sacrifice on a patchy landscape: fixed, drifting and yearly redrawn fertility maps vs a uniform one | `analysis/fertility_runs.py` + `analysis/plot_fertility.py` |
+| `hamilton.png` | Hamilton's rule measured: r, B and C of the actual sacrifices, in children; by the giver's energy | `analysis/hamilton.py` |
 
 For example, to rebuild the main figure (~8 minutes on 6 cores):
 
