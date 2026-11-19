@@ -494,8 +494,9 @@ function makeLive(id, opts) {
     frame() {
       if (!frame) return; const f = frame; frame = null; lastFrame = f;
       f.worlds.forEach((w, k) => { draw(views[k], w, k === 0); q(`.lv-pop[data-k="${k}"]`).textContent = `pop ${w.n.toLocaleString("en")}`; q(`.lv-share[data-k="${k}"]`).textContent = `${Math.round(w.share * 100)}%`; });
-      const st = f.worlds[0].step; q(".lv-clock").textContent = `year ${Math.floor(st / 600)} · step ${st.toLocaleString("en")}`;
-      q(".lv-season").style.width = `${((st % 600) / 600) * 100}%`;
+      // grass grows faster than average in the first half of the year (summer), slower in the second (winter)
+      const st = f.worlds[0].step, season = (st % 600) < 300 ? "summer" : "winter";
+      q(".lv-clock").textContent = `year ${Math.floor(st / 600)} · ${season} · step ${st.toLocaleString("en")}`;
       const note = q(".lv-note"), gen = f.worlds[0].fertGen;
       if (note && gen !== lastGen) { if (lastGen) { note.classList.remove("flash"); void note.offsetWidth; note.classList.add("flash"); } lastGen = gen; }
       drawChart(f.worlds);

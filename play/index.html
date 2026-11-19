@@ -75,8 +75,6 @@ button.btn:hover { filter: brightness(1.1); }
 .controls { display: flex; flex-wrap: wrap; gap: 6px; }
 .ctl { font: 500 13px var(--font-mono); color: var(--paper); background: var(--ink-3); border: 1px solid var(--rule); border-radius: 999px; padding: 7px 13px; cursor: pointer; }
 .ctl[aria-pressed="true"] { background: var(--paper); color: var(--ink); border-color: var(--paper); }
-.season { height: 6px; border-radius: 4px; background: var(--ink-3); overflow: hidden; }
-.season i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, #7fcf8a, #e7d27a, #6a8db8); }
 .worlds { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 @media (max-width: 640px) { .worlds { grid-template-columns: 1fr; } }
 .world { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
@@ -134,7 +132,6 @@ footer { color: var(--muted); font-size: 13px; }
           <button class="ctl" id="grass" type="button" aria-pressed="true">grass</button>
         </div>
       </div>
-      <div class="season" aria-hidden="true"><i id="season"></i></div>
       <div class="worlds">
         <div class="world">
           <div class="top"><span class="kin">gift to a neighbour</span><span class="legend" id="pop-0">pop —</span></div>

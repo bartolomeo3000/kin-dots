@@ -216,8 +216,6 @@ button.ctl:focus-visible, button.nav:focus-visible { outline: 3px solid var(--ki
 @keyframes noteflash { 0% { background: rgba(127, 207, 138, .55); color: var(--ink); } 100% { background: transparent; } }
 .controls { display: flex; flex-wrap: wrap; gap: 12px; }
 .clock { font-family: var(--font-mono); font-size: 26px; color: var(--paper); letter-spacing: .05em; }
-.season-bar { height: 10px; border-radius: 6px; background: var(--ink-3); overflow: hidden; }
-.season-bar i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, #7fcf8a, #e7d27a, #6a8db8); }
 
 /* ---------- chart slides ---------- */
 .chart-split { display: grid; grid-template-columns: 1fr 470px; gap: 60px; flex: 1; min-height: 0; }
@@ -389,7 +387,6 @@ button.ctl:focus-visible, button.nav:focus-visible { outline: 3px solid var(--ki
           <div class="lbl count"><span class="small">deaths by sacrifice,<br>last year</span><span class="live-big str lv-share" data-k="1">—</span></div>
         </div>
         <div class="live-side" data-a style="--d:350">
-          <div class="season-bar" aria-hidden="true"><i class="lv-season"></i></div>
           <p class="small">Share of deaths that are self-sacrifice, each year</p>
           <canvas class="lv-chart" aria-label="Chart of the sacrifice share in both worlds, growing as the simulation runs"></canvas>
           <div class="controls" role="group" aria-label="Simulation controls">
@@ -504,7 +501,6 @@ button.ctl:focus-visible, button.nav:focus-visible { outline: 3px solid var(--ki
         <div class="live-side" data-a style="--d:350">
           <p class="body fert-text">Grass regrows faster on some islands, and every spring the map is <span class="lv-note">redrawn</span>. Both worlds share it.</p>
           <code class="cmd-chip">--set fertility_map=noise fertility_memory=0</code>
-          <div class="season-bar" aria-hidden="true"><i class="lv-season"></i></div>
           <canvas class="lv-chart" aria-label="Chart of the sacrifice share in both worlds on the changing landscape"></canvas>
           <div class="controls" role="group" aria-label="Simulation controls">
             <button class="ctl lv-play" type="button" aria-pressed="true">pause</button>

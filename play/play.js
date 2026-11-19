@@ -122,10 +122,10 @@ function status(t) { $("#status").textContent = t; clearTimeout(statusTimer); st
 
 /* ---------------- live model ---------------- */
 const SIZE = 560;
-let worker = null, frame = null, last = null, playing = true, showGrass = true, popHist = [[], []], useFert = false;
+let worker = null, frame = null, last = null, playing = true, showGrass = true, popHist = [[], []], useFert = false, yearLen = 600;
 function restart(msg) {
   const { params, fert, seed } = readSettings();
-  useFert = !!fert; buildLUT();
+  useFert = !!fert; buildLUT(); yearLen = params.season;
   if (!worker) {
     worker = new Worker(URL.createObjectURL(new Blob([window.KinModel.workerSource], { type: "text/javascript" })));
     worker.onmessage = e => { frame = e.data; };
@@ -194,9 +194,9 @@ function render() {
       $(`#share-${k}`).textContent = `${Math.round(w.share * 100)}%`;
       const ph = popHist[k]; if (!ph.length || w.step - ph[ph.length - 1][0] >= 50) ph.push([w.step, w.n]);
     });
-    const st = f.worlds[0].step, year = (f.worlds[0].yearly.length && st) ? st / f.worlds[0].yearly.length : 600;
-    $("#clock").textContent = `year ${f.worlds[0].yearly.length} · step ${st.toLocaleString("en")}`;
-    $("#season").style.width = `${((st % year) / year) * 100}%`;
+    // grass grows faster than average in the first half of the year (summer), slower in the second (winter)
+    const st = f.worlds[0].step, season = (st % yearLen) < yearLen / 2 ? "summer" : "winter";
+    $("#clock").textContent = `year ${f.worlds[0].yearly.length} · ${season} · step ${st.toLocaleString("en")}`;
     lineChart($("#chart-share"), [{ ys: f.worlds[0].yearly, color: COL.kin }, { ys: f.worlds[1].yearly, color: COL.str }], 1, v => `${Math.round(v * 100)}%`, n => `year ${n === 0 ? 0 : n}`);
     const pmax = Math.max(1000, ...popHist.flat().map(p => p[1]));
     lineChart($("#chart-pop"), popHist.map((ph, k) => ({ ys: ph.map(p => p[1]), color: k ? COL.str : COL.kin })), Math.ceil(pmax / 2000) * 2000,
