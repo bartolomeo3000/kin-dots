@@ -217,3 +217,7 @@ The tests cover determinism (same seed, same run), exact energy and food bookkee
 - `evolife/KinSacrifice/`: the demo as an Evolife app (standalone).
 - `configs/`: parameter presets.
 - `tests/`: determinism, energy and food balance, state consistency.
+
+## License
+
+MIT, see [LICENSE](LICENSE). The Evolife framework that `evolife/KinSacrifice/` plugs into is a separate project with its own terms.
