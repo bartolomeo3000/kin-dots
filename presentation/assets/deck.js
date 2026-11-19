@@ -246,7 +246,7 @@ M["s-torus"] = (() => {
     renderer.setPixelRatio(clamp((window.devicePixelRatio || 1) * SCALE, 1, 2));
     renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix();
   }
-  let lastPhase = "";
+  let lastPhase = "", spin = 0;
   return {
     enter() { bg.set(COL.moss); if (!ready && !init()) return; resize(); },
     resize,
@@ -273,7 +273,9 @@ M["s-torus"] = (() => {
       }
       const torusness = s2;
       // Euler XYZ: spin about the ring's own axis (y) first, then tilt (x) so the hole faces the camera
-      group.rotation.y = t * .35 * torusness;
+      // spin is accumulated within each loop and reset while the map is flat, so every loop looks the same
+      spin = torusness > 0 ? spin + dt * .35 * torusness : 0;
+      group.rotation.y = spin * torusness;
       group.rotation.z = Math.sin(t * .2) * .18;
       group.rotation.x = lerp(-.95, -1.05, torusness) + Math.sin(t * .23) * .06;
       camera.position.set(0, 0, lerp(3.1, 2.05, torusness)); camera.lookAt(0, 0, 0);
