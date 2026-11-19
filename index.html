@@ -207,6 +207,9 @@ button.ctl:focus-visible, button.nav:focus-visible { outline: 3px solid var(--ki
 .lv-chart { width: 100%; height: 330px; display: block; }
 #s-fert .lv-chart { height: 180px; }
 #s-fert .ctl, #s-live .ctl { font-size: 19px; padding: 9px 16px; }
+.speed { display: inline-flex; align-items: center; gap: 10px; font: 500 19px var(--font-mono); color: var(--muted); }
+.speed input { width: 170px; accent-color: var(--kin); }
+.speed output { color: var(--paper); min-width: 4.2ch; font-variant-numeric: tabular-nums; }
 #s-live .lv-chart { height: 280px; }
 #s-fert .live-side { gap: 18px; }
 .fert-text { font-size: 25px; line-height: 1.4; }
@@ -391,9 +394,7 @@ button.ctl:focus-visible, button.nav:focus-visible { outline: 3px solid var(--ki
           <canvas class="lv-chart" aria-label="Chart of the sacrifice share in both worlds, growing as the simulation runs"></canvas>
           <div class="controls" role="group" aria-label="Simulation controls">
             <button class="ctl lv-play" type="button" aria-pressed="true">pause</button>
-            <button class="ctl" data-speed="2" type="button" aria-pressed="false">slow</button>
-            <button class="ctl" data-speed="40" type="button" aria-pressed="true">fast</button>
-            <button class="ctl" data-speed="100000" type="button" aria-pressed="false">max</button>
+            <label class="speed"><span>speed</span><input class="lv-speed" type="range" min="0" max="100" step="1" value="48" aria-label="Simulation speed, steps per frame"><output class="lv-speed-out">40</output></label>
           </div>
           <div class="controls" role="group" aria-label="Colour">
             <button class="ctl" data-color="0" type="button" aria-pressed="true">urge</button>
@@ -504,9 +505,7 @@ button.ctl:focus-visible, button.nav:focus-visible { outline: 3px solid var(--ki
           <canvas class="lv-chart" aria-label="Chart of the sacrifice share in both worlds on the changing landscape"></canvas>
           <div class="controls" role="group" aria-label="Simulation controls">
             <button class="ctl lv-play" type="button" aria-pressed="true">pause</button>
-            <button class="ctl" data-speed="2" type="button" aria-pressed="false">slow</button>
-            <button class="ctl" data-speed="40" type="button" aria-pressed="true">fast</button>
-            <button class="ctl" data-speed="100000" type="button" aria-pressed="false">max</button>
+            <label class="speed"><span>speed</span><input class="lv-speed" type="range" min="0" max="100" step="1" value="48" aria-label="Simulation speed, steps per frame"><output class="lv-speed-out">40</output></label>
             <button class="ctl" data-color="0" type="button" aria-pressed="true">urge</button>
             <button class="ctl" data-color="1" type="button" aria-pressed="false">family</button>
             <button class="ctl lv-grass" type="button" aria-pressed="true">grass</button>

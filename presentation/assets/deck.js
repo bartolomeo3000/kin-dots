@@ -408,6 +408,8 @@ M["s-worlds"] = (() => { let a, b; return {
 M["s-question"] = { enter() { bg.set(COL.str); } };
 
 /* 9 live model (Web Worker) */
+// speed slider: 0..99 -> 1..2000 steps per frame on a log scale, 100 -> no limit
+const speedOf = v => v >= 100 ? 100000 : Math.max(1, Math.round(Math.pow(2000, v / 99)));
 function makeLive(id, opts) {
   let worker, frame = null, views = [], chart, ready = false, playing = true, lastGen = 0, showGrass = true, lastFrame = null;
   const BLANK = (255 << 24) | (12 << 16) | (11 << 8) | 7;  // plain dark ground when the grass layer is hidden
@@ -476,7 +478,9 @@ function makeLive(id, opts) {
   function bindControls() {
     const play = q(".lv-play");
     play.addEventListener("click", () => { playing = !playing; play.textContent = playing ? "pause" : "play"; play.setAttribute("aria-pressed", String(playing)); worker.postMessage({ type: "run", on: playing }); });
-    qa("[data-speed]").forEach(b => b.addEventListener("click", () => { qa("[data-speed]").forEach(x => x.setAttribute("aria-pressed", String(x === b))); worker.postMessage({ type: "speed", v: +b.dataset.speed }); }));
+    const sp = q(".lv-speed"), so = q(".lv-speed-out");
+    const setSpeed = () => { const v = speedOf(+sp.value); so.textContent = v >= 100000 ? "max" : v; worker.postMessage({ type: "speed", v }); };
+    sp.addEventListener("input", setSpeed); setSpeed();
     qa("[data-color]").forEach(b => b.addEventListener("click", () => { qa("[data-color]").forEach(x => x.setAttribute("aria-pressed", String(x === b))); worker.postMessage({ type: "color", v: +b.dataset.color }); }));
     q(".lv-reset").addEventListener("click", () => worker.postMessage({ type: "reset" }));
     const grassBtn = q(".lv-grass");
@@ -673,6 +677,7 @@ function resizeActive() { const m = M[slides[cur].id]; if (m && m.resize) m.resi
 document.addEventListener("keydown", e => {
   const tag = (e.target && e.target.tagName) || "";
   if ((e.key === " " || e.key === "Enter") && (tag === "BUTTON")) return;
+  if (tag === "INPUT") return;
   if (["ArrowRight", "PageDown", " ", "Enter"].includes(e.key)) { e.preventDefault(); next(); }
   else if (["ArrowLeft", "PageUp", "Backspace"].includes(e.key)) { e.preventDefault(); prev(); }
   else if (e.key === "Home") go(0, -1); else if (e.key === "End") go(slides.length - 1);

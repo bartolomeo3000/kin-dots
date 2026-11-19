@@ -133,6 +133,7 @@ function restart(msg) {
   }
   worker.postMessage({ type: "init", seed, params, fert });
   worker.postMessage({ type: "run", on: playing });
+  setSpeed();
   popHist = [[], []];
   try { history.replaceState(null, "", location.pathname + (toQuery() ? "?" + toQuery() : "")); } catch (e) { /* ignore */ }
   if (msg) status(msg);
@@ -207,7 +208,10 @@ function render() {
 
 /* ---------------- controls ---------------- */
 $("#play").addEventListener("click", () => { playing = !playing; $("#play").textContent = playing ? "pause" : "play"; $("#play").setAttribute("aria-pressed", String(playing)); worker.postMessage({ type: "run", on: playing }); });
-$$("[data-speed]").forEach(b => b.addEventListener("click", () => { $$("[data-speed]").forEach(x => x.setAttribute("aria-pressed", String(x === b))); worker.postMessage({ type: "speed", v: +b.dataset.speed }); }));
+// speed slider: 0..99 -> 1..2000 steps per frame on a log scale, 100 -> no limit
+const speedOf = v => v >= 100 ? 100000 : Math.max(1, Math.round(Math.pow(2000, v / 99)));
+function setSpeed() { const v = speedOf(+$("#speed").value); $("#speed-out").textContent = v >= 100000 ? "max" : v; if (worker) worker.postMessage({ type: "speed", v }); }
+$("#speed").addEventListener("input", setSpeed);
 $$("[data-color]").forEach(b => b.addEventListener("click", () => { $$("[data-color]").forEach(x => x.setAttribute("aria-pressed", String(x === b))); worker.postMessage({ type: "color", v: +b.dataset.color }); }));
 $("#grass").addEventListener("click", () => { showGrass = !showGrass; $("#grass").setAttribute("aria-pressed", String(showGrass)); if (last) last.worlds.forEach((w, k) => draw(views[k], w, k === 0)); });
 
