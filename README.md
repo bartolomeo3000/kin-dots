@@ -6,13 +6,17 @@ An evolution simulation of dot agents that eat, reproduce and die, and that may 
 
 **Start here: [Dots that give their lives](dots-that-give-their-lives.md)**, an explainer for newcomers: the rules, the experiment, the result and why it happens.
 
-**Presentation:** [`presentation/index.html`](presentation/index.html) is an animated slide deck of the same story, made as a backdrop for a talk. It includes the model running live in the browser, a 3D torus and charts of the real runs. Open it in a browser (it needs internet for fonts and three.js). Keys: `→`/`←` to move, `N` for speaker notes, `F` for full screen. If your browser blocks local files, serve the folder:
+**Online:**
+- **[Presentation](https://bartolomeo3000.github.io/kin-dots/):** an animated slide deck of the same story, made as a backdrop for a talk, with the model running live in the browser, a 3D torus and charts of the real runs. Keys: `→`/`←` to move, `N` for speaker notes, `F` for full screen.
+- **[Playground](https://bartolomeo3000.github.io/kin-dots/play/):** change the world (winters, speed of the dots, how far children are born, the fertility landscape, ...) and watch, live, whether self-sacrifice still evolves. A setup can be shared as a link.
+
+Both run a JavaScript port of the model ([`presentation/assets/model.js`](presentation/assets/model.js)). To run them locally, serve the repository folder and open http://localhost:8000 (the presentation) or http://localhost:8000/play/:
 
 ```bash
-python3 -m http.server 8000 --directory presentation   # then open http://localhost:8000
+python3 -m http.server 8000
 ```
 
-Its data comes from `analysis/deck_data.py`.
+The presentation's data comes from `analysis/deck_data.py`.
 
 ![The two demo worlds side by side](docs/demo_compare.png)
 
@@ -208,6 +212,8 @@ The tests cover determinism (same seed, same run), exact energy and food bookkee
 - `kin_dots/experiments/run.py`: headless runner.
 - `kin_dots/experiments/sweep.py`: many conditions and seeds in parallel, comparison table.
 - `analysis/`: scripts behind the figures in `docs/`.
+- `index.html` + `presentation/assets/`: the presentation (the website's main page); `presentation/assets/model.js` is the model in JavaScript.
+- `play/`: the playground.
 - `evolife/KinSacrifice/`: the demo as an Evolife app (standalone).
 - `configs/`: parameter presets.
 - `tests/`: determinism, energy and food balance, state consistency.

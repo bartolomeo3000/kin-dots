@@ -36,6 +36,13 @@ body {
   box-sizing: border-box;
 }
 #viewport { position: relative; width: 100%; height: 100%; overflow: hidden; }
+.playlink {
+  position: fixed; z-index: 50; top: calc(12px + env(safe-area-inset-top, 0px)); right: max(20px, calc(env(safe-area-inset-right, 0px) + 8px));
+  font: 500 14px var(--font-mono); letter-spacing: .02em; color: #1d1406; background: var(--kin); text-decoration: none;
+  padding: 8px 14px; border-radius: 999px; box-shadow: 0 8px 24px rgba(0, 0, 0, .45); opacity: .88; transition: opacity .2s;
+}
+.playlink:hover, .playlink:focus-visible { opacity: 1; }
+.playlink:focus-visible { outline: 2px solid var(--paper); outline-offset: 3px; }
 #stage {
   position: absolute; left: 50%; top: 50%;
   width: 1920px; height: 1080px;
@@ -259,6 +266,7 @@ button.ctl:focus-visible, button.nav:focus-visible { outline: 3px solid var(--ki
 }
 </style>
 
+<a class="playlink" href="play/">Play with the model <span aria-hidden="true">→</span></a>
 <div id="viewport">
   <div id="stage" role="region" aria-roledescription="slide deck" aria-label="Dots That Give Their Lives">
     <canvas id="bg" aria-hidden="true"></canvas>
@@ -534,6 +542,7 @@ button.ctl:focus-visible, button.nav:focus-visible { outline: 3px solid var(--ki
   </div>
 </div>
 
-<script src="assets/data.js"></script>
+<script src="presentation/assets/data.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-<script src="assets/deck.js"></script>
+<script src="presentation/assets/model.js"></script>
+<script src="presentation/assets/deck.js"></script>

@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Kin-Dots Playground</title>
+<meta name="description" content="Change the world of the kin-dots simulation and watch whether self-sacrifice still evolves, live in your browser.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght,SOFT@0,9..144,300..800,0..100;1,9..144,300..800,0..100&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: settings panel on the left, the two live worlds and their charts on the right; stacks on narrow screens.
+   Same night palette as the presentation: amber = gift to a neighbour, cyan = gift to a stranger, ember = sacrifice. */
+:root {
+  --ink: #0b1112; --ink-2: #111a1b; --ink-3: #182425; --rule: #253434;
+  --paper: #ece5d6; --muted: #8e9b95; --soft: #cfc8b9;
+  --kin: #f3b54a; --stranger: #55c6da; --ember: #ff6b3d; --moss: #7fcf8a;
+  --font-display: "Fraunces", "Iowan Old Style", Georgia, serif;
+  --font-body: "Inter", "Helvetica Neue", Arial, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; background: var(--ink); color: var(--paper); font-family: var(--font-body); font-size: 15px; line-height: 1.5;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 20px 40px;
+}
+a { color: var(--kin); }
+a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px solid var(--kin); outline-offset: 2px; }
+.wrap { max-width: 1560px; margin: 0 auto; display: flex; flex-direction: column; gap: 18px; }
+
+header { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px 24px; }
+header h1 { margin: 0; font-family: var(--font-display); font-weight: 400; font-size: clamp(28px, 3.4vw, 44px); letter-spacing: -.02em; font-variation-settings: "opsz" 144, "SOFT" 50; }
+header h1 em { color: var(--ember); }
+header nav { display: flex; gap: 18px; font-family: var(--font-mono); font-size: 13px; letter-spacing: .06em; text-transform: uppercase; }
+header nav a { color: var(--muted); text-decoration: none; }
+header nav a:hover { color: var(--paper); }
+.intro { margin: 0; color: var(--soft); max-width: 75ch; text-wrap: pretty; }
+
+.app { display: grid; grid-template-columns: 340px minmax(0, 1fr); gap: 22px; align-items: start; }
+@media (max-width: 1050px) { .app { grid-template-columns: 1fr; } .panel { order: 2; } }
+
+/* ---------- settings panel ---------- */
+.panel { background: var(--ink-2); border: 1px solid var(--rule); border-radius: 16px; padding: 18px; display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.panel h2 { margin: 0; font-family: var(--font-display); font-weight: 400; font-size: 24px; }
+.presets { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { font: 500 12.5px var(--font-mono); color: var(--paper); background: var(--ink-3); border: 1px solid var(--rule); border-radius: 999px; padding: 6px 11px; cursor: pointer; }
+.chip:hover { border-color: var(--muted); }
+.chip[aria-pressed="true"] { background: var(--paper); color: var(--ink); border-color: var(--paper); }
+fieldset { border: none; border-top: 1px solid var(--rule); margin: 0; padding: 12px 0 0; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+legend { font: 500 12px var(--font-mono); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); padding: 0 6px 0 0; }
+.field { display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; align-items: center; }
+.field label { font-size: 14px; color: var(--soft); }
+.field.changed label { color: var(--kin); }
+.field.changed label::after { content: " ●"; font-size: 9px; vertical-align: middle; }
+.field output { font: 500 13px var(--font-mono); color: var(--paper); font-variant-numeric: tabular-nums; min-width: 6ch; text-align: right; }
+.field input[type="range"] { grid-column: 1 / -1; width: 100%; accent-color: var(--kin); margin: 2px 0 0; }
+.field .hint { grid-column: 1 / -1; font-size: 12.5px; color: var(--muted); line-height: 1.35; }
+.switch { display: flex; align-items: center; gap: 10px; font-size: 14px; color: var(--soft); cursor: pointer; }
+.switch input { width: 18px; height: 18px; accent-color: var(--moss); }
+.landscape-opts[hidden] { display: none !important; }
+.seed-row { display: flex; gap: 8px; align-items: center; }
+.seed-row input { width: 100px; font: 500 14px var(--font-mono); background: var(--ink); color: var(--paper); border: 1px solid var(--rule); border-radius: 8px; padding: 6px 8px; }
+.actions { display: flex; flex-wrap: wrap; gap: 8px; }
+button.btn { font: 500 14px var(--font-body); border-radius: 10px; padding: 10px 14px; cursor: pointer; border: 1px solid var(--rule); background: var(--ink-3); color: var(--paper); }
+button.btn.primary { background: var(--kin); color: #1d1406; border-color: var(--kin); font-weight: 600; }
+button.btn:hover { filter: brightness(1.1); }
+.status { font-size: 12.5px; color: var(--muted); min-height: 1.4em; }
+
+/* ---------- live view ---------- */
+.stage { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 16px; }
+.clock { font: 500 16px var(--font-mono); color: var(--paper); font-variant-numeric: tabular-nums; }
+.controls { display: flex; flex-wrap: wrap; gap: 6px; }
+.ctl { font: 500 13px var(--font-mono); color: var(--paper); background: var(--ink-3); border: 1px solid var(--rule); border-radius: 999px; padding: 7px 13px; cursor: pointer; }
+.ctl[aria-pressed="true"] { background: var(--paper); color: var(--ink); border-color: var(--paper); }
+.season { height: 6px; border-radius: 4px; background: var(--ink-3); overflow: hidden; }
+.season i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, #7fcf8a, #e7d27a, #6a8db8); }
+.worlds { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+@media (max-width: 640px) { .worlds { grid-template-columns: 1fr; } }
+.world { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.world .top { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; font: 500 14px var(--font-mono); }
+.world canvas.view { width: 100%; max-width: 100%; aspect-ratio: 1; display: block; border-radius: 12px; background: #070b0c; }
+.world .count { display: flex; justify-content: space-between; align-items: last baseline; gap: 10px; }
+.world .count span:first-child { font-size: 13px; color: var(--muted); line-height: 1.3; }
+.big { font-family: var(--font-display); font-size: clamp(34px, 4vw, 56px); line-height: 1; letter-spacing: -.02em; font-variant-numeric: tabular-nums; font-variation-settings: "opsz" 144; white-space: nowrap; }
+.kin { color: var(--kin); } .str { color: var(--stranger); } .ember { color: var(--ember); }
+.charts { display: grid; grid-template-columns: 1.4fr 1fr; gap: 16px; }
+@media (max-width: 760px) { .charts { grid-template-columns: 1fr; } }
+.chart { background: var(--ink-2); border: 1px solid var(--rule); border-radius: 14px; padding: 12px 14px; min-width: 0; }
+.chart p { margin: 0 0 6px; font-size: 13px; color: var(--muted); }
+.chart canvas { width: 100%; height: 200px; display: block; }
+.legend { font-size: 13px; color: var(--muted); }
+.legend b { font-weight: 500; }
+footer { color: var(--muted); font-size: 13px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Dots that give their <em>lives</em>: playground</h1>
+    <nav aria-label="Site"><a href="../">presentation</a><a href="https://github.com/bartolomeo3000/kin-dots">source</a></nav>
+  </header>
+  <p class="intro">Two worlds run side by side from the same start. A dot can give all its energy to a neighbour and die; on the left the energy goes to the neighbour it met (usually a relative), on the right to a random dot anywhere (a stranger). Change the world on the left panel, restart, and see whether self-sacrifice still evolves.</p>
+
+  <div class="app">
+    <form class="panel" id="settings" aria-label="Simulation settings">
+      <h2>Settings</h2>
+      <div class="presets" role="group" aria-label="Ready-made worlds" id="presets"></div>
+      <div id="fields"></div>
+      <fieldset>
+        <legend>Random seed</legend>
+        <div class="seed-row"><input id="seed" type="number" min="1" max="999999" step="1" value="7" aria-label="Random seed"><button class="btn" type="button" id="seed-random">new seed</button></div>
+      </fieldset>
+      <div class="actions">
+        <button class="btn primary" type="submit">Restart with these settings</button>
+        <button class="btn" type="button" id="defaults">Defaults</button>
+        <button class="btn" type="button" id="copy-link">Copy link</button>
+      </div>
+      <p class="status" id="status" aria-live="polite"></p>
+    </form>
+
+    <section class="stage" aria-label="Live simulation">
+      <div class="bar">
+        <span class="clock" id="clock">year 0 · step 0</span>
+        <div class="controls" role="group" aria-label="Simulation controls">
+          <button class="ctl" id="play" type="button" aria-pressed="true">pause</button>
+          <button class="ctl" data-speed="2" type="button" aria-pressed="false">slow</button>
+          <button class="ctl" data-speed="40" type="button" aria-pressed="true">fast</button>
+          <button class="ctl" data-speed="100000" type="button" aria-pressed="false">max</button>
+          <button class="ctl" data-color="0" type="button" aria-pressed="true">urge</button>
+          <button class="ctl" data-color="1" type="button" aria-pressed="false">family</button>
+          <button class="ctl" id="grass" type="button" aria-pressed="true">grass</button>
+        </div>
+      </div>
+      <div class="season" aria-hidden="true"><i id="season"></i></div>
+      <div class="worlds">
+        <div class="world">
+          <div class="top"><span class="kin">gift to a neighbour</span><span class="legend" id="pop-0">pop —</span></div>
+          <canvas class="view" id="view-0" aria-label="Live view of the world where gifts go to the neighbour met"></canvas>
+          <div class="count"><span>deaths by sacrifice,<br>last year</span><span class="big kin" id="share-0">—</span></div>
+        </div>
+        <div class="world">
+          <div class="top"><span class="str">gift to a stranger</span><span class="legend" id="pop-1">pop —</span></div>
+          <canvas class="view" id="view-1" aria-label="Live view of the control world where gifts go to a random dot"></canvas>
+          <div class="count"><span>deaths by sacrifice,<br>last year</span><span class="big str" id="share-1">—</span></div>
+        </div>
+      </div>
+      <div class="charts">
+        <div class="chart"><p>Share of deaths that are self-sacrifice, each year</p><canvas id="chart-share" aria-label="Yearly share of deaths that are self-sacrifice in both worlds"></canvas></div>
+        <div class="chart"><p>Population</p><canvas id="chart-pop" aria-label="Population of both worlds over time"></canvas></div>
+      </div>
+      <p class="legend">Dot colour (<b>urge</b>): <span style="color:#5b7be0">blue</span> = almost never gives, <span class="kin">amber</span> → <span class="ember">ember</span> = often. <b>Family</b>: an inherited colour the dots cannot see. White lines: this moment's gifts. Green: grass; with a landscape, brighter patches regrow faster.</p>
+    </section>
+  </div>
+  <footer>This page runs a JavaScript port of the model; the full Python version, the experiments and the figures are in the <a href="https://github.com/bartolomeo3000/kin-dots">kin-dots repository</a>.</footer>
+</div>
+<script src="../presentation/assets/model.js"></script>
+<script src="play.js"></script>
+</body>
+</html>
