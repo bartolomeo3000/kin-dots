@@ -413,7 +413,7 @@ function workerMain() {
   const OFF = []; for (let dx = -1; dx <= 1; dx++) for (let dy = -1; dy <= 1; dy++) if (dx || dy) { const n = Math.hypot(dx, dy); OFF.push([dx, dy, dx / n, dy / n]); }
   function mulberry(seed) { let a = seed >>> 0; return () => { a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
   class World {
-    constructor(seed, stranger) {
+    constructor(seed, stranger, fert) {
       this.r = mulberry(seed); this.spare = null; this.stranger = stranger;
       const F64 = n => new Float64Array(n), F32 = n => new Float32Array(n);
       this.x = F64(CAP); this.y = F64(CAP); this.e = F64(CAP); this.age = new Int32Array(CAP);
@@ -425,6 +425,10 @@ function workerMain() {
         this.tr[i] = this.r(); this.tg[i] = this.r(); this.tb[i] = this.r();
       }
       this.grass = new Float32Array(P.g * P.g).fill(P.cap * P.init);
+      // fertility map (as kin_dots/core/landscape.py): smoothed noise on the torus, exp(contrast * z),
+      // mean 1. Its own generator, seeded from the seed only, so both worlds get the same maps.
+      this.fertOpt = fert || null; this.fert = null; this.fertGen = 0;
+      if (fert) { this.mr = mulberry((seed * 2654435761 + 97) >>> 0); this.mspare = null; this.fz = this.smooth(); this.fertFromZ(); }
       this.nb = Math.max(3, Math.floor(P.W / P.radius)); this.bs = P.W / this.nb;
       const nb2 = this.nb * this.nb;
       this.bc = new Int32Array(nb2); this.bstart = new Int32Array(nb2 + 1); this.bfill = new Int32Array(nb2);
@@ -437,6 +441,22 @@ function workerMain() {
     }
     nrm() { if (this.spare !== null) { const s = this.spare; this.spare = null; return s; } let u = 0, v = 0; while (!u) u = this.r(); v = this.r();
       const m = Math.sqrt(-2 * Math.log(u)); this.spare = m * Math.sin(2 * Math.PI * v); return m * Math.cos(2 * Math.PI * v); }
+    mn() { if (this.mspare !== null) { const s = this.mspare; this.mspare = null; return s; } let u = 0; while (!u) u = this.mr(); const v = this.mr();
+      const m = Math.sqrt(-2 * Math.log(u)); this.mspare = m * Math.sin(2 * Math.PI * v); return m * Math.cos(2 * Math.PI * v); }
+    smooth() {
+      const g = P.g, s = this.fertOpt.scale / (P.W / g), R = Math.ceil(3 * s), ker = [];
+      for (let k = -R; k <= R; k++) ker.push(Math.exp(-k * k / (2 * s * s)));
+      const a = new Float32Array(g * g), b = new Float32Array(g * g);
+      for (let i = 0; i < g * g; i++) a[i] = this.mn();
+      for (let x = 0; x < g; x++) for (let y = 0; y < g; y++) { let t = 0; for (let k = -R; k <= R; k++) t += ker[k + R] * a[(((x + k) % g + g) % g) * g + y]; b[x * g + y] = t; }
+      for (let x = 0; x < g; x++) for (let y = 0; y < g; y++) { let t = 0; for (let k = -R; k <= R; k++) t += ker[k + R] * b[x * g + (((y + k) % g + g) % g)]; a[x * g + y] = t; }
+      return this.standardise(a);
+    }
+    standardise(z) { let m = 0, v = 0; for (const q of z) m += q; m /= z.length; for (const q of z) v += (q - m) * (q - m); const sd = Math.sqrt(v / z.length) || 1;
+      for (let i = 0; i < z.length; i++) z[i] = (z[i] - m) / sd; return z; }
+    fertFromZ() { const c = this.fertOpt.contrast, f = new Float32Array(this.fz.length); let m = 0;
+      for (let i = 0; i < f.length; i++) { f[i] = Math.exp(c * this.fz[i]); m += f[i]; } m /= f.length; for (let i = 0; i < f.length; i++) f[i] /= m;
+      this.fert = f; this.fertGen++; }
     copy(k, i) { this.x[k] = this.x[i]; this.y[k] = this.y[i]; this.e[k] = this.e[i]; this.age[k] = this.age[i]; this.a[k] = this.a[i]; this.b[k] = this.b[i];
       this.fs[k] = this.fs[i]; this.tr[k] = this.tr[i]; this.tg[k] = this.tg[i]; this.tb[k] = this.tb[i]; }
     buckets() {
@@ -508,9 +528,15 @@ function workerMain() {
         for (let i = 0; i < n; i++) this.age[i]++;
       }
       this.n = n;
+      // a new (or drifted) fertility map at the start of each year
+      if (this.fert && this.fertOpt.memory < 1 && this.step > 0 && this.step % P.season === 0) {
+        const m = this.fertOpt.memory, fresh = this.smooth(), q = Math.sqrt(Math.max(0, 1 - m * m));
+        for (let i = 0; i < this.fz.length; i++) this.fz[i] = m * this.fz[i] + q * fresh[i];
+        this.standardise(this.fz); this.fertFromZ();
+      }
       // regrow
-      const sf = Math.max(0, 1 + P.harsh * Math.sin(2 * Math.PI * this.step / P.season)), gr = this.grass;
-      for (let c = 0; c < g * g; c++) { let f = gr[c]; f += sf * (P.growth * f * (1 - f / P.cap) + P.inflow); gr[c] = f < 0 ? 0 : f > P.cap ? P.cap : f; }
+      const sf = Math.max(0, 1 + P.harsh * Math.sin(2 * Math.PI * this.step / P.season)), gr = this.grass, fe = this.fert;
+      for (let c = 0; c < g * g; c++) { let f = gr[c]; f += sf * (fe ? fe[c] : 1) * (P.growth * f * (1 - f / P.cap) + P.inflow); gr[c] = f < 0 ? 0 : f > P.cap ? P.cap : f; }
       // statistics over the last year
       const pos = this.step % P.season; this.sumS += sac - this.ringS[pos]; this.sumD += sac + deaths - this.ringD[pos]; this.ringS[pos] = sac; this.ringD[pos] = sac + deaths;
       this.step++;
@@ -531,44 +557,53 @@ function workerMain() {
         }
       }
       const gq = new Uint8Array(P.g * P.g); for (let c = 0; c < P.g * P.g; c++) gq[c] = Math.round(this.grass[c] / P.cap * 255);
-      return { n, pos, col, grass: gq, gifts: this.gifts.slice(0, 4 * this.giftN), share: this.sumD ? this.sumS / this.sumD : 0, yearly: this.yearly.slice(), step: this.step };
+      let fq = null;
+      if (this.fert) { fq = new Uint8Array(P.g * P.g); for (let c = 0; c < P.g * P.g; c++) { const t = (Math.log(this.fert[c]) + 1.5) / 3; fq[c] = t < 0 ? 0 : t > 1 ? 15 : Math.round(t * 15); } }
+      return { n, pos, col, grass: gq, fert: fq, fertGen: this.fertGen, gifts: this.gifts.slice(0, 4 * this.giftN), share: this.sumD ? this.sumS / this.sumD : 0, yearly: this.yearly.slice(), step: this.step };
     }
   }
-  let worlds = [], running = true, speed = 40, mode = 0, seed = 1;
-  function reset() { worlds = [new World(seed, false), new World(seed, true)]; }
+  let worlds = [], running = true, speed = 40, mode = 0, seed = 1, fert = null;
+  function reset() { worlds = [new World(seed, false, fert), new World(seed, true, fert)]; }
   function loop() {
     const t0 = performance.now();
     if (running) { let k = 0; while (k < speed && performance.now() - t0 < 26) { worlds[0].tick(); worlds[1].tick(); k++; } }
     const f = worlds.map(w => w.frame(mode)), bufs = [];
-    f.forEach(x => bufs.push(x.pos.buffer, x.col.buffer, x.grass.buffer));
+    f.forEach(x => { bufs.push(x.pos.buffer, x.col.buffer, x.grass.buffer); if (x.fert) bufs.push(x.fert.buffer); });
     postMessage({ worlds: f, season: Math.sin(2 * Math.PI * worlds[0].step / P.season) }, bufs);
     setTimeout(loop, Math.max(0, 33 - (performance.now() - t0)));
   }
   onmessage = ev => { const m = ev.data;
-    if (m.type === "init") { seed = m.seed || 1; reset(); if (!worlds.started) { worlds.started = true; loop(); } }
+    if (m.type === "init") { seed = m.seed || 1; fert = m.fert || null; reset(); if (!worlds.started) { worlds.started = true; loop(); } }
     else if (m.type === "run") running = m.on; else if (m.type === "speed") speed = m.v; else if (m.type === "color") mode = m.v;
     else if (m.type === "reset") { seed = (seed * 7919 + 13) % 100000 || 1; reset(); } };
 }
 
-M["s-live"] = (() => {
-  let worker, frame = null, views = [], chart, ready = false, playing = true;
-  const SIZE = 560;
+function makeLive(id, opts) {
+  let worker, frame = null, views = [], chart, ready = false, playing = true, lastGen = 0;
+  const SIZE = 560, root = $("#" + id), q = s => $(s, root), qa = s => $$(s, root);
   function startWorker() {
     const src = `(${workerMain.toString()})()`;
     worker = new Worker(URL.createObjectURL(new Blob([src], { type: "text/javascript" })));
     worker.onmessage = e => { frame = e.data; };
-    worker.postMessage({ type: "init", seed: 7 });
+    worker.onerror = e => console.error(`live model (${id}) stopped: ${e.message} (line ${e.lineno})`);
+    worker.postMessage({ type: "init", seed: opts.seed || 7, fert: opts.fert || null });
   }
-  function initView(id) {
-    const c = $(id); c.width = SIZE; c.height = SIZE; const ctx = c.getContext("2d");
+  function initView(c) {
+    c.width = SIZE; c.height = SIZE; const ctx = c.getContext("2d");
     const img = ctx.createImageData(SIZE, SIZE); const lut = new Int32Array(SIZE); for (let p = 0; p < SIZE; p++) lut[p] = Math.floor(p * 75 / SIZE);
     return { c, ctx, img, buf: new Uint32Array(img.data.buffer), lut };
   }
-  const grassLUT = new Uint32Array(256);
-  for (let v = 0; v < 256; v++) { const a = Math.sqrt(v / 255); const r = 7 + 34 * a, g = 11 + 80 * a, b = 12 + 40 * a; grassLUT[v] = (255 << 24) | (b << 16) | (g << 8) | r; }
+  // colour of a grass cell: amount of grass (0..255) x fertility class (0..15; uniform maps use class 7)
+  const LUT = new Uint32Array(256 * 16);
+  for (let f = 0; f < 16; f++) for (let v = 0; v < 256; v++) {
+    const a = Math.sqrt(v / 255), t = f / 15, k = opts.fert ? 1 : 0;
+    const r = 7 + 34 * a + k * (t - .45) * 22, g = 11 + 80 * a + k * (t - .45) * 70, b = 12 + 40 * a + k * (t - .45) * 30;
+    const c8 = x => x < 0 ? 0 : x > 255 ? 255 : x | 0;
+    LUT[f * 256 + v] = (255 << 24) | (c8(b) << 16) | (c8(g) << 8) | c8(r);
+  }
   function draw(v, w, near) {
-    const { buf, lut, ctx, img } = v, grass = w.grass;
-    for (let py = 0; py < SIZE; py++) { const cy = lut[py], row = py * SIZE; for (let px = 0; px < SIZE; px++) buf[row + px] = grassLUT[grass[lut[px] * 75 + cy]]; }
+    const { buf, lut, ctx, img } = v, grass = w.grass, fert = w.fert;
+    for (let py = 0; py < SIZE; py++) { const cy = lut[py], row = py * SIZE; for (let px = 0; px < SIZE; px++) { const c = lut[px] * 75 + cy; buf[row + px] = LUT[(fert ? fert[c] : 7) * 256 + grass[c]]; } }
     const s = SIZE / 300, pos = w.pos, col = w.col;
     for (let i = 0; i < w.n; i++) {
       const x = (pos[2 * i] * s) | 0, y = (pos[2 * i + 1] * s) | 0; if (x >= SIZE - 1 || y >= SIZE - 1) continue;
@@ -578,8 +613,8 @@ M["s-live"] = (() => {
     ctx.putImageData(img, 0, 0);
     const gf = w.gifts; ctx.lineWidth = 1.6;
     const wrap = d => d > 150 ? d - 300 : d < -150 ? d + 300 : d;
-    for (let q = 0; q < gf.length; q += 4) {
-      const xa = gf[q], ya = gf[q + 1], xb = gf[q + 2], yb = gf[q + 3];
+    for (let k = 0; k < gf.length; k += 4) {
+      const xa = gf[k], ya = gf[k + 1], xb = gf[k + 2], yb = gf[k + 3];
       if (near) {
         // gifts to a neighbour are short on the torus: draw the shortest path, which may cross an
         // edge (then as two short pieces, one at each edge), never a line across the whole map
@@ -607,26 +642,30 @@ M["s-live"] = (() => {
     });
   }
   function bindControls() {
-    const play = $("#live-play");
+    const play = q(".lv-play");
     play.addEventListener("click", () => { playing = !playing; play.textContent = playing ? "pause" : "play"; play.setAttribute("aria-pressed", String(playing)); worker.postMessage({ type: "run", on: playing }); });
-    $$("[data-speed]").forEach(b => b.addEventListener("click", () => { $$("[data-speed]").forEach(x => x.setAttribute("aria-pressed", String(x === b))); worker.postMessage({ type: "speed", v: +b.dataset.speed }); }));
-    $$("[data-color]").forEach(b => b.addEventListener("click", () => { $$("[data-color]").forEach(x => x.setAttribute("aria-pressed", String(x === b))); worker.postMessage({ type: "color", v: +b.dataset.color }); }));
-    $("#live-reset").addEventListener("click", () => worker.postMessage({ type: "reset" }));
+    qa("[data-speed]").forEach(b => b.addEventListener("click", () => { qa("[data-speed]").forEach(x => x.setAttribute("aria-pressed", String(x === b))); worker.postMessage({ type: "speed", v: +b.dataset.speed }); }));
+    qa("[data-color]").forEach(b => b.addEventListener("click", () => { qa("[data-color]").forEach(x => x.setAttribute("aria-pressed", String(x === b))); worker.postMessage({ type: "color", v: +b.dataset.color }); }));
+    q(".lv-reset").addEventListener("click", () => worker.postMessage({ type: "reset" }));
   }
   return {
     enter() { bg.set(COL.kin, false);
-      if (!ready) { startWorker(); views = [initView("#live-0"), initView("#live-1")]; bindControls(); ready = true; }
-      chart = setup($("#live-chart")); worker.postMessage({ type: "run", on: playing }); },
+      if (!ready) { startWorker(); views = qa(".lv-view").map(initView); bindControls(); ready = true; }
+      chart = setup(q(".lv-chart")); worker.postMessage({ type: "run", on: playing }); },
     leave() { if (worker) worker.postMessage({ type: "run", on: false }); },
-    resize() { chart = setup($("#live-chart")); },
+    resize() { chart = setup(q(".lv-chart")); },
     frame() {
       if (!frame) return; const f = frame; frame = null;
-      f.worlds.forEach((w, k) => { draw(views[k], w, k === 0); $("#live-pop-" + k).textContent = `pop ${w.n.toLocaleString("en")}`; $("#live-share-" + k).textContent = `${Math.round(w.share * 100)}%`; });
-      const st = f.worlds[0].step; $("#live-clock").textContent = `year ${Math.floor(st / 600)} · step ${st.toLocaleString("en")}`;
-      $("#live-season").style.width = `${((st % 600) / 600) * 100}%`;
+      f.worlds.forEach((w, k) => { draw(views[k], w, k === 0); q(`.lv-pop[data-k="${k}"]`).textContent = `pop ${w.n.toLocaleString("en")}`; q(`.lv-share[data-k="${k}"]`).textContent = `${Math.round(w.share * 100)}%`; });
+      const st = f.worlds[0].step; q(".lv-clock").textContent = `year ${Math.floor(st / 600)} · step ${st.toLocaleString("en")}`;
+      q(".lv-season").style.width = `${((st % 600) / 600) * 100}%`;
+      const note = q(".lv-note"), gen = f.worlds[0].fertGen;
+      if (note && gen !== lastGen) { if (lastGen) { note.classList.remove("flash"); void note.offsetWidth; note.classList.add("flash"); } lastGen = gen; }
       drawChart(f.worlds);
     } };
-})();
+}
+M["s-live"] = makeLive("s-live", { seed: 7 });
+M["s-fert"] = makeLive("s-fert", { seed: 7, fert: { contrast: 1, scale: 30, memory: 0 } });
 
 /* ---------- chart helpers ---------- */
 function axes(ctx, box, o) {
@@ -766,7 +805,6 @@ M["s-age"] = (() => { let s = [], t; return {
     });
   } }; })();
 
-M["s-limits"] = { enter() { bg.set(COL.str); } };
 
 M["s-close"] = (() => { let f; return {
   enter() { bg.set(COL.ember, false); if (!f) f = new DotField($("#close-canvas"), { n: 900, fams: 40, rate: 5, spread: 55, size: 15, trail: .25, alpha: .55 }); f.init(); },

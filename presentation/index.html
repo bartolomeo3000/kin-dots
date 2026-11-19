@@ -197,7 +197,15 @@ button.ctl:focus-visible, button.nav:focus-visible { outline: 3px solid var(--ki
 .live-big { font-family: var(--font-display); font-size: 84px; line-height: 1; letter-spacing: -.02em; font-variant-numeric: tabular-nums; font-variation-settings: "opsz" 144;
   flex: none; width: 4.1ch; text-align: right; white-space: nowrap; }
 .live-side { display: flex; flex-direction: column; gap: 22px; min-width: 0; }
-#live-chart { width: 100%; height: 330px; display: block; }
+.lv-chart { width: 100%; height: 330px; display: block; }
+#s-fert .lv-chart { height: 180px; }
+#s-fert .ctl { font-size: 19px; padding: 9px 16px; }
+#s-fert .live-side { gap: 18px; }
+.fert-text { font-size: 25px; line-height: 1.4; }
+.cmd-chip { font-family: var(--font-mono); font-size: 16px; color: var(--kin); background: var(--ink-2); border: 1px solid var(--rule); border-radius: 10px; padding: 10px 14px; overflow-wrap: anywhere; }
+.lv-note { color: #7fcf8a; border-radius: 6px; }
+.lv-note.flash { animation: noteflash 1.6s ease-out; }
+@keyframes noteflash { 0% { background: rgba(127, 207, 138, .55); color: var(--ink); } 100% { background: transparent; } }
 .controls { display: flex; flex-wrap: wrap; gap: 12px; }
 .clock { font-family: var(--font-mono); font-size: 26px; color: var(--paper); letter-spacing: .05em; }
 .season-bar { height: 10px; border-radius: 6px; background: var(--ink-3); overflow: hidden; }
@@ -358,25 +366,25 @@ button.ctl:focus-visible, button.nav:focus-visible { outline: 3px solid var(--ki
     <section class="slide" id="s-live" data-notes="This is the actual model, running live in the browser, both worlds from the same start. Colour shows each dot's current urge to sacrifice: blue almost never, yellow and orange often. Speed it up and watch the left world. Within roughly ten to twenty thousand steps sacrifice becomes the most common way to die on the left, while the right stays low. Switch to family colours to see the patches of relatives.">
       <div class="live-head">
         <h2 data-a style="--d:0">Live: the real model, running now</h2>
-        <div class="clock" id="live-clock" aria-live="off">year 0 · step 0</div>
+        <div class="clock lv-clock" aria-live="off">year 0 · step 0</div>
       </div>
       <div class="live-grid">
         <div class="live-world" data-a style="--d:150">
-          <div class="lbl"><span class="kin">gift to a neighbour</span><span id="live-pop-0" class="small">pop —</span></div>
-          <canvas id="live-0" aria-label="Live view of the gift-to-a-neighbour world"></canvas>
-          <div class="lbl count"><span class="small">deaths by sacrifice,<br>last year</span><span class="live-big kin" id="live-share-0">—</span></div>
+          <div class="lbl"><span class="kin">gift to a neighbour</span><span class="small lv-pop" data-k="0">pop —</span></div>
+          <canvas class="lv-view" aria-label="Live view of the gift-to-a-neighbour world"></canvas>
+          <div class="lbl count"><span class="small">deaths by sacrifice,<br>last year</span><span class="live-big kin lv-share" data-k="0">—</span></div>
         </div>
         <div class="live-world" data-a style="--d:250">
-          <div class="lbl"><span class="str">gift to a stranger</span><span id="live-pop-1" class="small">pop —</span></div>
-          <canvas id="live-1" aria-label="Live view of the gift-to-a-stranger world"></canvas>
-          <div class="lbl count"><span class="small">deaths by sacrifice,<br>last year</span><span class="live-big str" id="live-share-1">—</span></div>
+          <div class="lbl"><span class="str">gift to a stranger</span><span class="small lv-pop" data-k="1">pop —</span></div>
+          <canvas class="lv-view" aria-label="Live view of the gift-to-a-stranger world"></canvas>
+          <div class="lbl count"><span class="small">deaths by sacrifice,<br>last year</span><span class="live-big str lv-share" data-k="1">—</span></div>
         </div>
         <div class="live-side" data-a style="--d:350">
-          <div class="season-bar" aria-hidden="true"><i id="live-season"></i></div>
+          <div class="season-bar" aria-hidden="true"><i class="lv-season"></i></div>
           <p class="small">Share of deaths that are self-sacrifice, each year</p>
-          <canvas id="live-chart" aria-label="Chart of the sacrifice share in both worlds, growing as the simulation runs"></canvas>
+          <canvas class="lv-chart" aria-label="Chart of the sacrifice share in both worlds, growing as the simulation runs"></canvas>
           <div class="controls" role="group" aria-label="Simulation controls">
-            <button class="ctl" id="live-play" type="button" aria-pressed="true">pause</button>
+            <button class="ctl lv-play" type="button" aria-pressed="true">pause</button>
             <button class="ctl" data-speed="2" type="button" aria-pressed="false">slow</button>
             <button class="ctl" data-speed="40" type="button" aria-pressed="true">fast</button>
             <button class="ctl" data-speed="100000" type="button" aria-pressed="false">max</button>
@@ -384,7 +392,7 @@ button.ctl:focus-visible, button.nav:focus-visible { outline: 3px solid var(--ki
           <div class="controls" role="group" aria-label="Colour">
             <button class="ctl" data-color="0" type="button" aria-pressed="true">urge to sacrifice</button>
             <button class="ctl" data-color="1" type="button" aria-pressed="false">family colour</button>
-            <button class="ctl" id="live-reset" type="button">restart</button>
+            <button class="ctl lv-reset" type="button">restart</button>
           </div>
           <p class="small">Dot colour: <span style="color:#5b7be0">blue</span> = almost never gives, <span class="kin">amber</span> → <span class="ember">ember</span> = often. White lines: this moment's gifts.</p>
         </div>
@@ -467,16 +475,41 @@ button.ctl:focus-visible, button.nav:focus-visible { outline: 3px solid var(--ki
     </section>
 
     <!-- 16 -->
-    <section class="slide" id="s-limits" data-notes="What the model does not show. Reproduction is asexual, so relatives are nearly clones; with sex, relatedness and the effect would be weaker. The world was tuned so the effect is clear; milder winters or faster dots weaken it to 40 to 60 percent of deaths, but always above the control. The first winters are a bottleneck. And B and C are described, not measured.">
-      <div class="eyebrow" data-a="fade">Fine print</div>
-      <h2 data-a style="--d:80">What this model does not show</h2>
-      <div class="limits">
-        <div class="limit" data-a style="--d:250"><h3>Clones, not siblings</h3><p class="body">Reproduction is asexual, so relatives are almost clones. With sex, relatedness is lower and the effect would be weaker.</p></div>
-        <div class="limit" data-a style="--d:400"><h3>A world tuned for clarity</h3><p class="body">Milder winters or faster dots weaken it to 40–60% of deaths, still well above the control. The control matters more than the number.</p></div>
-        <div class="limit" data-a style="--d:550"><h3>A risky start</h3><p class="body">Before sacrifice spreads, early winters can shrink the population to a few dozen. An unlucky seed can die out.</p></div>
-        <div class="limit" data-a style="--d:700"><h3>B and C, not measured</h3><p class="body">Relatedness is measured directly. Benefit and cost in offspring are described, not computed.</p></div>
+    <section class="slide" id="s-fert" data-notes="This is how you test whether the result is robust: change something about the world, keep the control, run again. Here grass regrows faster on some islands than elsewhere, like a relief map, and every spring a completely new map is drawn. Both worlds share the same maps, so they still differ only in who receives the gift. In the browser give it a minute at max speed: around year 60 to 80 the left world climbs to about half of deaths while the right stays low. Recorded over three runs of 30,000 steps: 60 percent of deaths are sacrifices with gifts to neighbours, 10 percent with gifts to strangers; on the uniform map it was 71 against 7. With a map that never changes it drops further, to about half. So the effect survives, a little weaker, and the control still stays low.">
+      <div class="live-head">
+        <h2 data-a style="--d:0">Change the world, test again</h2>
+        <div class="clock lv-clock" aria-live="off">year 0 · step 0</div>
+      </div>
+      <div class="live-grid">
+        <div class="live-world" data-a style="--d:150">
+          <div class="lbl"><span class="kin">gift to a neighbour</span><span class="small lv-pop" data-k="0">pop —</span></div>
+          <canvas class="lv-view" aria-label="Live view of the gift-to-a-neighbour world on a changing landscape: brighter green patches are fertile islands"></canvas>
+          <div class="lbl count"><span class="small">deaths by sacrifice,<br>last year</span><span class="live-big kin lv-share" data-k="0">—</span></div>
+        </div>
+        <div class="live-world" data-a style="--d:250">
+          <div class="lbl"><span class="str">gift to a stranger</span><span class="small lv-pop" data-k="1">pop —</span></div>
+          <canvas class="lv-view" aria-label="Live view of the gift-to-a-stranger world on the same changing landscape"></canvas>
+          <div class="lbl count"><span class="small">deaths by sacrifice,<br>last year</span><span class="live-big str lv-share" data-k="1">—</span></div>
+        </div>
+        <div class="live-side" data-a style="--d:350">
+          <p class="body fert-text">Grass regrows faster on some islands, and every spring the map is <span class="lv-note">redrawn</span>. Both worlds share it.</p>
+          <code class="cmd-chip">--set fertility_map=noise fertility_memory=0</code>
+          <div class="season-bar" aria-hidden="true"><i class="lv-season"></i></div>
+          <canvas class="lv-chart" aria-label="Chart of the sacrifice share in both worlds on the changing landscape"></canvas>
+          <div class="controls" role="group" aria-label="Simulation controls">
+            <button class="ctl lv-play" type="button" aria-pressed="true">pause</button>
+            <button class="ctl" data-speed="2" type="button" aria-pressed="false">slow</button>
+            <button class="ctl" data-speed="40" type="button" aria-pressed="true">fast</button>
+            <button class="ctl" data-speed="100000" type="button" aria-pressed="false">max</button>
+            <button class="ctl" data-color="0" type="button" aria-pressed="true">urge</button>
+            <button class="ctl" data-color="1" type="button" aria-pressed="false">family</button>
+            <button class="ctl lv-reset" type="button">restart</button>
+          </div>
+          <p class="small">Recorded, 3 runs × 30,000 steps: <span class="kin">60%</span> vs <span class="str">10%</span> (uniform map: 71% vs 7%). It still happens, a little weaker.</p>
+        </div>
       </div>
     </section>
+
 
     <!-- 17 -->
     <section class="slide" id="s-close" data-notes="The take-away: nobody here acts for the good of the species. Selection acts on genes, and in a world where neighbours are family, a gene for giving yourself up to a neighbour is a gene for helping copies of itself. Invite people to run it and change the parameters.">
