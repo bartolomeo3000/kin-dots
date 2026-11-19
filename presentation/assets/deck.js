@@ -579,7 +579,8 @@ function workerMain() {
 }
 
 function makeLive(id, opts) {
-  let worker, frame = null, views = [], chart, ready = false, playing = true, lastGen = 0;
+  let worker, frame = null, views = [], chart, ready = false, playing = true, lastGen = 0, showGrass = true, lastFrame = null;
+  const BLANK = (255 << 24) | (12 << 16) | (11 << 8) | 7;  // plain dark ground when the grass layer is hidden
   const SIZE = 560, root = $("#" + id), q = s => $(s, root), qa = s => $$(s, root);
   function startWorker() {
     const src = `(${workerMain.toString()})()`;
@@ -603,7 +604,8 @@ function makeLive(id, opts) {
   }
   function draw(v, w, near) {
     const { buf, lut, ctx, img } = v, grass = w.grass, fert = w.fert;
-    for (let py = 0; py < SIZE; py++) { const cy = lut[py], row = py * SIZE; for (let px = 0; px < SIZE; px++) { const c = lut[px] * 75 + cy; buf[row + px] = LUT[(fert ? fert[c] : 7) * 256 + grass[c]]; } }
+    if (!showGrass) buf.fill(BLANK);
+    else for (let py = 0; py < SIZE; py++) { const cy = lut[py], row = py * SIZE; for (let px = 0; px < SIZE; px++) { const c = lut[px] * 75 + cy; buf[row + px] = LUT[(fert ? fert[c] : 7) * 256 + grass[c]]; } }
     const s = SIZE / 300, pos = w.pos, col = w.col;
     for (let i = 0; i < w.n; i++) {
       const x = (pos[2 * i] * s) | 0, y = (pos[2 * i + 1] * s) | 0; if (x >= SIZE - 1 || y >= SIZE - 1) continue;
@@ -647,6 +649,11 @@ function makeLive(id, opts) {
     qa("[data-speed]").forEach(b => b.addEventListener("click", () => { qa("[data-speed]").forEach(x => x.setAttribute("aria-pressed", String(x === b))); worker.postMessage({ type: "speed", v: +b.dataset.speed }); }));
     qa("[data-color]").forEach(b => b.addEventListener("click", () => { qa("[data-color]").forEach(x => x.setAttribute("aria-pressed", String(x === b))); worker.postMessage({ type: "color", v: +b.dataset.color }); }));
     q(".lv-reset").addEventListener("click", () => worker.postMessage({ type: "reset" }));
+    const grassBtn = q(".lv-grass");
+    grassBtn.addEventListener("click", () => {
+      showGrass = !showGrass; grassBtn.setAttribute("aria-pressed", String(showGrass));
+      if (lastFrame) lastFrame.worlds.forEach((w, k) => draw(views[k], w, k === 0));  // redraw at once, also when paused
+    });
   }
   return {
     enter() { bg.set(COL.kin, false);
@@ -655,7 +662,7 @@ function makeLive(id, opts) {
     leave() { if (worker) worker.postMessage({ type: "run", on: false }); },
     resize() { chart = setup(q(".lv-chart")); },
     frame() {
-      if (!frame) return; const f = frame; frame = null;
+      if (!frame) return; const f = frame; frame = null; lastFrame = f;
       f.worlds.forEach((w, k) => { draw(views[k], w, k === 0); q(`.lv-pop[data-k="${k}"]`).textContent = `pop ${w.n.toLocaleString("en")}`; q(`.lv-share[data-k="${k}"]`).textContent = `${Math.round(w.share * 100)}%`; });
       const st = f.worlds[0].step; q(".lv-clock").textContent = `year ${Math.floor(st / 600)} · step ${st.toLocaleString("en")}`;
       q(".lv-season").style.width = `${((st % 600) / 600) * 100}%`;
