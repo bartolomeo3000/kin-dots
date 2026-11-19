@@ -566,7 +566,7 @@ M["s-live"] = (() => {
   }
   const grassLUT = new Uint32Array(256);
   for (let v = 0; v < 256; v++) { const a = Math.sqrt(v / 255); const r = 7 + 34 * a, g = 11 + 80 * a, b = 12 + 40 * a; grassLUT[v] = (255 << 24) | (b << 16) | (g << 8) | r; }
-  function draw(v, w) {
+  function draw(v, w, near) {
     const { buf, lut, ctx, img } = v, grass = w.grass;
     for (let py = 0; py < SIZE; py++) { const cy = lut[py], row = py * SIZE; for (let px = 0; px < SIZE; px++) buf[row + px] = grassLUT[grass[lut[px] * 75 + cy]]; }
     const s = SIZE / 300, pos = w.pos, col = w.col;
@@ -577,10 +577,21 @@ M["s-live"] = (() => {
     }
     ctx.putImageData(img, 0, 0);
     const gf = w.gifts; ctx.lineWidth = 1.6;
+    const wrap = d => d > 150 ? d - 300 : d < -150 ? d + 300 : d;
     for (let q = 0; q < gf.length; q += 4) {
-      if (Math.abs(gf[q] - gf[q + 2]) > 150 || Math.abs(gf[q + 1] - gf[q + 3]) > 150) { ctx.strokeStyle = "rgba(255,255,255,.55)"; }
-      else ctx.strokeStyle = "rgba(255,255,255,.95)";
-      ctx.beginPath(); ctx.moveTo(gf[q] * s, gf[q + 1] * s); ctx.lineTo(gf[q + 2] * s, gf[q + 3] * s); ctx.stroke();
+      const xa = gf[q], ya = gf[q + 1], xb = gf[q + 2], yb = gf[q + 3];
+      if (near) {
+        // gifts to a neighbour are short on the torus: draw the shortest path, which may cross an
+        // edge (then as two short pieces, one at each edge), never a line across the whole map
+        const dx = wrap(xb - xa), dy = wrap(yb - ya);
+        ctx.strokeStyle = "rgba(255,255,255,.95)"; ctx.beginPath();
+        ctx.moveTo(xa * s, ya * s); ctx.lineTo((xa + dx) * s, (ya + dy) * s);
+        if (dx !== xb - xa || dy !== yb - ya) { ctx.moveTo(xb * s, yb * s); ctx.lineTo((xb - dx) * s, (yb - dy) * s); }
+        ctx.stroke();
+      } else {
+        ctx.strokeStyle = "rgba(255,255,255,.6)";
+        ctx.beginPath(); ctx.moveTo(xa * s, ya * s); ctx.lineTo(xb * s, yb * s); ctx.stroke();
+      }
     }
   }
   function drawChart(ws) {
@@ -610,7 +621,7 @@ M["s-live"] = (() => {
     resize() { chart = setup($("#live-chart")); },
     frame() {
       if (!frame) return; const f = frame; frame = null;
-      f.worlds.forEach((w, k) => { draw(views[k], w); $("#live-pop-" + k).textContent = `pop ${w.n.toLocaleString("en")}`; $("#live-share-" + k).textContent = `${Math.round(w.share * 100)}%`; });
+      f.worlds.forEach((w, k) => { draw(views[k], w, k === 0); $("#live-pop-" + k).textContent = `pop ${w.n.toLocaleString("en")}`; $("#live-share-" + k).textContent = `${Math.round(w.share * 100)}%`; });
       const st = f.worlds[0].step; $("#live-clock").textContent = `year ${Math.floor(st / 600)} · step ${st.toLocaleString("en")}`;
       $("#live-season").style.width = `${((st % 600) / 600) * 100}%`;
       drawChart(f.worlds);
