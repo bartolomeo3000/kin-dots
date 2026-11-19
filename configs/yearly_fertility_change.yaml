@@ -1,0 +1,9 @@
+# Self-sacrifice demo on a patchy landscape that is redrawn every year.
+# Grass regrows faster in some places than in others (a smoothed random map, mean 1),
+# and at the start of each year the map is replaced by a new one.
+# Applies to BOTH worlds, so they still differ only in who receives the gift:
+#     ./demo.sh --set-file configs/yearly_fertility_change.yaml
+fertility_map: noise
+fertility_memory: 0.0      # 0 = a new map every year (1 = fixed, 0.7 = drifting)
+fertility_contrast: 1.0    # how strong the fertile and barren patches are
+fertility_scale: 30        # size of the patches (world units; the world is 300 x 300)
