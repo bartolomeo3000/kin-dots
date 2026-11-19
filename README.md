@@ -4,11 +4,9 @@ An evolution simulation of dot agents that eat, reproduce and die, and that may 
 
 **Main result: self-sacrifice.** A dot can give all its energy to a neighbour and die. Two genes decide how likely it is to do so. Over ~30,000 steps this rises from ~5% to **~70% of all deaths** when the gift goes to a neighbour (usually a relative). In the control, where the gift goes to a random dot anywhere on the map, it stays at **5–10%**. The two worlds differ in that one rule only.
 
-**Start here: [Dots that give their lives](dots-that-give-their-lives.md)**, an explainer for newcomers: the rules, the experiment, the result and why it happens.
+**Start here: [the presentation](https://bartolomeo3000.github.io/kin-dots/)**, the whole story for newcomers: the rules, the experiment, the result and why it happens. It is an animated slide deck with the model running live in the browser, a 3D torus and charts of the real runs, also made as a backdrop for a talk. Keys: `→`/`←` to move, `N` for speaker notes, `F` for full screen. A simpler text version is in [dots-that-give-their-lives.md](dots-that-give-their-lives.md).
 
-**Online:**
-- **[Presentation](https://bartolomeo3000.github.io/kin-dots/):** an animated slide deck of the same story, made as a backdrop for a talk, with the model running live in the browser, a 3D torus and charts of the real runs. Keys: `→`/`←` to move, `N` for speaker notes, `F` for full screen.
-- **[Playground](https://bartolomeo3000.github.io/kin-dots/play/):** change the world (winters, speed of the dots, how far children are born, the fertility landscape, ...) and watch, live, whether self-sacrifice still evolves. A setup can be shared as a link.
+**Then play with it: [the playground](https://bartolomeo3000.github.io/kin-dots/play/).** Change the world (winters, speed of the dots, how far children are born, the fertility landscape, ...) and watch, live, whether self-sacrifice still evolves. A setup can be shared as a link.
 
 Both run a JavaScript port of the model ([`presentation/assets/model.js`](presentation/assets/model.js)). To run them locally, serve the repository folder and open http://localhost:8000 (the presentation) or http://localhost:8000/play/:
 
