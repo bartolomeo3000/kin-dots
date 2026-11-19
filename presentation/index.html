@@ -190,7 +190,10 @@ button.ctl:focus-visible, button.nav:focus-visible { outline: 3px solid var(--ki
 .live-world { display: flex; flex-direction: column; gap: 14px; }
 .live-world canvas { width: 560px; height: 560px; border-radius: 16px; display: block; background: #070b0c; }
 .live-world .lbl { display: flex; justify-content: space-between; align-items: baseline; font-family: var(--font-mono); font-size: 22px; }
-.live-big { font-family: var(--font-display); font-size: 92px; line-height: 1; letter-spacing: -.02em; font-variant-numeric: tabular-nums; font-variation-settings: "opsz" 144; }
+.live-world .lbl { gap: 16px; flex-wrap: nowrap; }
+.live-world .lbl > span:first-child { white-space: nowrap; }
+.live-big { font-family: var(--font-display); font-size: 84px; line-height: 1; letter-spacing: -.02em; font-variant-numeric: tabular-nums; font-variation-settings: "opsz" 144;
+  flex: none; width: 4.1ch; text-align: right; white-space: nowrap; }
 .live-side { display: flex; flex-direction: column; gap: 22px; min-width: 0; }
 #live-chart { width: 100%; height: 330px; display: block; }
 .controls { display: flex; flex-wrap: wrap; gap: 12px; }
@@ -359,12 +362,12 @@ button.ctl:focus-visible, button.nav:focus-visible { outline: 3px solid var(--ki
         <div class="live-world" data-a style="--d:150">
           <div class="lbl"><span class="kin">gift to a neighbour</span><span id="live-pop-0" class="small">pop —</span></div>
           <canvas id="live-0" aria-label="Live view of the gift-to-a-neighbour world"></canvas>
-          <div class="lbl"><span class="small">deaths by sacrifice, last year</span><span class="live-big kin" id="live-share-0">—</span></div>
+          <div class="lbl"><span class="small">deaths by sacrifice,<br>last year</span><span class="live-big kin" id="live-share-0">—</span></div>
         </div>
         <div class="live-world" data-a style="--d:250">
           <div class="lbl"><span class="str">gift to a stranger</span><span id="live-pop-1" class="small">pop —</span></div>
           <canvas id="live-1" aria-label="Live view of the gift-to-a-stranger world"></canvas>
-          <div class="lbl"><span class="small">deaths by sacrifice, last year</span><span class="live-big str" id="live-share-1">—</span></div>
+          <div class="lbl"><span class="small">deaths by sacrifice,<br>last year</span><span class="live-big str" id="live-share-1">—</span></div>
         </div>
         <div class="live-side" data-a style="--d:350">
           <div class="season-bar" aria-hidden="true"><i id="live-season"></i></div>
